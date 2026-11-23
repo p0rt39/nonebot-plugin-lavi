@@ -1,0 +1,68 @@
+name: CI
+
+# Pull requests are the only place the test matrix runs; a merge on an
+# up-to-date branch produces the tree that was just tested.
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Ruff, typos, uv-lock and uv-sync all live in .pre-commit-config.yaml, so one
+  # prek job covers them; separate jobs would repeat the same work.
+  prek:
+    name: Prek
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: j178/prek-action@v2
+
+  basedpyright:
+    name: BasedPyright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: 3.12
+          version: "latest"
+
+      - name: Install Dependencies
+        run: uv sync --locked
+
+      - name: Static typing check
+        run: uvx basedpyright==1.40.0
+
+  test:
+    name: Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both supported endpoints plus one middle version.
+        python-version: ["3.10", "3.12", "3.14"]
+
+    env:
+      PYTHON: ${{ matrix.python-version }}
+      UV_NO_SYNC: 1
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          version: latest
+
+      - name: Install Dependencies
+        run: uv sync --locked
+
+      - name: Run Pytest
+        run: uv run poe test

@@ -1,0 +1,64 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+junit.xml
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.env.dev
+.env.prod
+.venv
+env/
+venv/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+pyrightconfig.json
+
+# Local tooling caches
+.ruff_cache/
+.cache/
+
+# Local-only development notes (never committed)
+.llm/
+
+# Plugin runtime data written through nonebot-plugin-localstore
+data/
+cache/
+config/
+
+# Misc
+.DS_Store
+sss
+
+# VisualStudioCode
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
