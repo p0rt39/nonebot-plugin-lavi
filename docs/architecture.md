@@ -7,19 +7,26 @@
 
 ```text
 src/nonebot_plugin_rawtell/
-├── __init__.py      # NoneBot 集成：__plugin_meta__、配置、插件数据目录
-├── config.py        # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
-├── decision.py      # 参数解析与选择器→计算器编排（无 NoneBot 依赖）
-└── protocol.py      # 跨子模块共享的 Pydantic 模型与决策类型
+├── __init__.py              # NoneBot 集成：__plugin_meta__、配置、data_dir、matcher 注册
+├── config.py                # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
+├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型
+├── decision.py              # 参数解析与选择器→计算器编排（无 NoneBot 依赖）
+├── selector.py              # 算法注册表校验与选择策略
+├── command.py               # /rawtell 处理函数（不持有 Matcher）
+└── decider_algorithms/
+    ├── __init__.py          # 显式算法注册表
+    ├── coin.py              # 硬币算法
+    └── dice.py              # 骰子算法
 tests/
-├── conftest.py      # NoneBot 初始化、适配器注册、数据目录隔离
-├── fake.py          # OneBot V11 假事件构造
-├── test_decision.py # 二元决策骨架验收测试
-└── plugin_test.py   # 插件加载冒烟测试
+├── conftest.py              # NoneBot 初始化、适配器注册、数据目录隔离
+├── fake.py                  # OneBot V11 假事件构造
+├── test_decision.py         # 二元决策核心契约
+├── test_decider_algorithms.py
+├── test_selector.py
+└── plugin_test.py           # 插件加载与命令交互测试
 ```
 
-当前处于初始化阶段：二元决策核心与对应单元测试已就位；命令注册、选择器算法与持久化
-尚未实现，因此用户侧仍无可用功能。
+当前状态：参数解析、决策核心、算法选择与 `/rawtell` 命令已接通；决策历史与持久化尚未实现。
 
 ## 运行时入口
 
@@ -28,6 +35,9 @@ tests/
 - 定义 `__plugin_meta__`（`type="application"`，`config=Config`，`supported_adapters=None`）。
 - `require("nonebot_plugin_localstore")` 后用 `store.get_plugin_data_dir()` 取得 `data_dir`。
 - 读取 `get_plugin_config(Config).rawtell` 得到 `plugin_config`。
+- 用 `build_selector()` 构建一次算法选择器；配置的算法名无效时记录 WARNING 并回退到
+  `random`，保证插件仍可加载。
+- 注册 `/rawtell` matcher，并调用 `command.handle_rawtell()`；处理函数不持有 `Matcher`。
 
 新增命令与生命周期钩子也注册在这里，处理逻辑放同级子模块，避免把业务继续堆进入口文件。
 
@@ -38,20 +48,37 @@ tests/
 ```text
 arguments ──parse_options──> (affirmative, negative)
                                    │
-capture_context() ──> DecisionContext ──selector──> Calculator ──> bool
-                                   │                        │
+capture_context() ──> DecisionContext ──selector──> Algorithm
+                                                       │
+                                        Algorithm.calculate(context) ──> bool
+                                   │
                                    └────── same object ─────┘
                                    result: affirmative / negative
 ```
 
-- `capture_context()` 只采样一次当前 UTC 时间与进程 `pid`，封装为 `DecisionContext`。
-- `selector(context)` 选出一个 `Calculator`；选择器与计算器接收同一个 `DecisionContext`，
+- `capture_context()` 只采样一次 UTC 时间、进程 `pid`、64 位 `nonce` 与
+  `perf_counter_ns()`，封装为 `DecisionContext`。选择器与算法接收同一个对象，
   看不到命令原文，也不能各自重新采样。
-- `decide()` 调用选择器一次、计算器一次，按布尔结果返回对应的候选项。
+- `derive_seed(context, purpose=...)` 用 BLAKE2b 把上下文哈希为 64 位种子；
+  选择器用 `selector:v1`，每个算法用 `algorithm:<name>:v<version>`，避免两者相关性。
+- `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
   大小写与标点保留。
-- 选择器或计算器抛出的异常原样向上传播；核心不内置占卜算法。
+- 选择器或算法抛出的异常原样向上传播；命令层记录日志并回复降级文案，核心不吞异常。
+
+## 算法选择与注册
+
+- `decider_algorithms/` 每个文件实现一个算法，导出 `ALGORITHM`；`__init__.py` 是显式
+  注册表，不使用自动发现。新增算法需要同时改文件与注册表，保证打包与 review 可控。
+- `Algorithm` 元数据包含稳定的 `name`、整数 `version`、整数 `weight` 与纯函数
+  `calculate`。行为变化时递增 `version`，使派生种子随契约变化。
+- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 按权重用上下文派生种子选择算法；
+  也可填具体 `name` 固定算法。配置无效时入口记录 WARNING 并回退到 `random`。
+- 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
+  `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
+- `tests/test_decider_algorithms.py` 验证注册表与算法确定性；`tests/test_selector.py`
+  用假算法验证固定/随机/禁用/重名规则，避免统计型断言。
 
 ## 新增功能时的落点
 
@@ -60,6 +87,7 @@ capture_context() ──> DecisionContext ──selector──> Calculator ─�
 | 新的用户配置 | `config.py` 的 `ScopedConfig`，同步 README 配置表 |
 | 跨子模块的数据结构 | `protocol.py` |
 | 业务流程 / 外部调用 | 新建同级子模块，并在包级 `AGENTS.md` 记录职责 |
+| 新的决策算法 | `decider_algorithms/<name>.py`，并在该包 `__init__.py` 注册 |
 | 命令与事件注册 | `__init__.py`，处理函数在子模块 |
 | 持久化文件读写 | 以 `data_dir` 为根，原子替换写入 |
 
@@ -75,5 +103,5 @@ capture_context() ──> DecisionContext ──selector──> Calculator ─�
 
 ## 待定
 
-命令入口与选择器算法、适配器支持面、持久化数据模型在功能设计确定后补充到本文与各级
-`AGENTS.md`；`protocol.py`/`decision.py` 的公开契约以源码与 `tests/test_decision.py` 为准。
+持久化数据模型、决策历史与适配器支持面在功能设计确定后补充到本文与各级 `AGENTS.md`；
+`protocol.py`/`decision.py`/`selector.py` 的公开契约以源码与对应测试为准。

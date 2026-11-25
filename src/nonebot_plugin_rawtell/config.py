@@ -10,6 +10,9 @@ class ScopedConfig(BaseModel):
     where the value has a meaningful range.
     """
 
+    algorithm: str = "random"
+    """Registered algorithm name, or ``"random"`` to choose per decision."""
+
 
 class Config(BaseModel):
     """Top-level config holder for NoneBot plugin loading."""
