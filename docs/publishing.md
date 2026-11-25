@@ -39,5 +39,7 @@
 
 - 当前版本 `0.1.0`，尚未发布到 PyPI；发布流程在功能落地后确定（版本号、标签与 Release 说明的来源）。
 - 构建后端为 `uv_build`；改动包数据/依赖时用 `uv build` 并检查随包分发的内容。
+  `pyproject.toml` 的 `[tool.uv.build-backend] source-exclude` 把各级 `AGENTS.md`
+  排除出发行包——agent 规则属于开发材料，新增子目录规则文件时沿用该 glob。
 - CI 只在 Pull Request 上运行；贡献者流程到创建 PR 为止。
 - 标签版本必须与 `pyproject.toml` 的 `version` 一致。
