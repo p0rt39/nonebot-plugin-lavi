@@ -8,7 +8,7 @@ restarts the round with freshly derived marks.
 
 from collections.abc import Sequence
 
-from ..protocol import Algorithm, DecisionContext, derive_algorithm_bits
+from ..protocol import Algorithm, Explanation, DecisionContext, derive_algorithm_bits
 
 NAME = "obi-ifa"
 VERSION = 2
@@ -89,8 +89,15 @@ def _derive_marks(
     )
 
 
-def calculate(context: DecisionContext) -> bool:
-    """Resolve one round, restarting with fresh marks when Ifa rejects it."""
+def _verdict_label(value: bool | None) -> str:
+    if value is True:
+        return "肯定"
+    if value is False:
+        return "否定"
+    return "待定"
+
+
+def _resolve(context: DecisionContext, steps: list[str] | None = None) -> bool:
     attempt = 0
     while True:
         first_open = cast_obi(
@@ -100,17 +107,28 @@ def calculate(context: DecisionContext) -> bool:
                 count=OBI_SHELLS,
             )
         )
+        first_letter = obi_letter(first_open)
         first_verdict = obi_verdict(first_open)
+        if steps is not None:
+            steps.append(
+                f"第 {attempt + 1} 轮：首掷 {first_letter}"
+                f"（{first_open} 开，{_verdict_label(first_verdict)}）"
+            )
         if first_verdict is None:
-            return ifa_verdict(
-                cast_ifa(
-                    _derive_marks(
-                        context,
-                        stage=f"ifa:{attempt}",
-                        count=IFA_MARKS,
-                    )
+            odu = cast_ifa(
+                _derive_marks(
+                    context,
+                    stage=f"ifa:{attempt}",
+                    count=IFA_MARKS,
                 )
             )
+            result = ifa_verdict(odu)
+            if steps is not None:
+                steps.append(
+                    f"第 {attempt + 1} 轮：Ifa 奥杜 {odu:08b}，"
+                    f"单爻 {odu.bit_count()} 枚 → {'肯定' if result else '否定'}"
+                )
+            return result
 
         second_open = cast_obi(
             _derive_marks(
@@ -119,21 +137,49 @@ def calculate(context: DecisionContext) -> bool:
                 count=OBI_SHELLS,
             )
         )
-        if obi_letter(second_open) == EYEIFE:
-            return first_verdict
-
-        if ifa_verdict(
-            cast_ifa(
-                _derive_marks(
-                    context,
-                    stage=f"ifa:{attempt}",
-                    count=IFA_MARKS,
-                )
+        second_letter = obi_letter(second_open)
+        if steps is not None:
+            steps.append(
+                f"第 {attempt + 1} 轮：再掷 {second_letter}"
+                f"（{second_open} 开，{_verdict_label(obi_verdict(second_open))}）"
             )
-        ):
+        if second_letter == EYEIFE:
+            if steps is not None:
+                steps.append(f"第 {attempt + 1} 轮：第二次 Eyeife → 沿用首掷结果")
             return first_verdict
 
+        odu = cast_ifa(
+            _derive_marks(
+                context,
+                stage=f"ifa:{attempt}",
+                count=IFA_MARKS,
+            )
+        )
+        ifa_affirmative = ifa_verdict(odu)
+        if steps is not None:
+            steps.append(
+                f"第 {attempt + 1} 轮：Ifa 奥杜 {odu:08b}，"
+                f"单爻 {odu.bit_count()} 枚 → {'肯定' if ifa_affirmative else '否定'}"
+            )
+        if ifa_affirmative:
+            if steps is not None:
+                steps.append(f"第 {attempt + 1} 轮：Ifa 肯定 → 沿用首掷结果")
+            return first_verdict
+        if steps is not None:
+            steps.append(f"第 {attempt + 1} 轮：Ifa 否定 → 重开一轮")
         attempt += 1
+
+
+def calculate(context: DecisionContext) -> bool:
+    """Resolve one round, restarting with fresh marks when Ifa rejects it."""
+    return _resolve(context)
+
+
+def explain(context: DecisionContext) -> Explanation:
+    """Return every Obi draw, Ifa Odu and confirmation or restart decision."""
+    steps: list[str] = []
+    answer = _resolve(context, steps)
+    return Explanation(answer, tuple(steps))
 
 
 ALGORITHM = Algorithm(
@@ -141,4 +187,6 @@ ALGORITHM = Algorithm(
     version=VERSION,
     weight=WEIGHT,
     calculate=calculate,
+    display_name="宝螺",
+    explain=explain,
 )

@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from ..protocol import (
     Algorithm,
+    Explanation,
     DecisionContext,
     derive_algorithm_bits,
 )
@@ -136,8 +137,7 @@ def judge_is_stable(judge: int) -> bool:
         raise ValueError(f"not an even Judge figure: {judge:#06b}") from None
 
 
-def calculate(context: DecisionContext) -> bool:
-    """Cast a shield chart and answer from the Judge's stable/mobile quality."""
+def _chart(context: DecisionContext) -> Chart:
     marks = derive_algorithm_bits(
         context,
         name=NAME,
@@ -145,7 +145,33 @@ def calculate(context: DecisionContext) -> bool:
         stage="mothers",
         count=CAST_BITS,
     )
-    return judge_is_stable(build_chart(cast_mothers(marks)).judge)
+    return build_chart(cast_mothers(marks))
+
+
+def _figure(value: int) -> str:
+    name, _ = FIGURES[value]
+    return f"{name}({value:04b})"
+
+
+def calculate(context: DecisionContext) -> bool:
+    """Cast a shield chart and answer from the Judge's stable/mobile quality."""
+    return judge_is_stable(_chart(context).judge)
+
+
+def explain(context: DecisionContext) -> Explanation:
+    """Return the shield chart figures and the Judge's stable/mobile verdict."""
+    chart = _chart(context)
+    stable = judge_is_stable(chart.judge)
+    steps = (
+        f"四母：{' / '.join(_figure(figure) for figure in chart.mothers)}",
+        f"四女：{' / '.join(_figure(figure) for figure in chart.daughters)}",
+        f"四侄：{' / '.join(_figure(figure) for figure in chart.nieces)}",
+        f"右见证：{_figure(chart.right_witness)}，"
+        f"左见证：{_figure(chart.left_witness)}",
+        f"裁判：{_figure(chart.judge)}，"
+        f"{'稳定' if stable else '流动'} → {'肯定' if stable else '否定'}",
+    )
+    return Explanation(stable, steps)
 
 
 ALGORITHM = Algorithm(
@@ -153,4 +179,6 @@ ALGORITHM = Algorithm(
     version=VERSION,
     weight=WEIGHT,
     calculate=calculate,
+    display_name="地占",
+    explain=explain,
 )

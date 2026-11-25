@@ -110,11 +110,11 @@ def build_selector(
     enabled = _enabled(algorithms)
 
     if name == RANDOM_SELECTION:
-        return lambda context: choose_algorithm(context, enabled).calculate
+        return lambda context: choose_algorithm(context, enabled)
 
     for algorithm in enabled:
         if algorithm.name == name:
             chosen = algorithm
-            return lambda _context: chosen.calculate
+            return lambda _context: chosen
 
     raise ValueError(f"unknown algorithm: {name!r}")

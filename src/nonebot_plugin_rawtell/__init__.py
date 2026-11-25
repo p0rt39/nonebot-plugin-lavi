@@ -44,7 +44,11 @@ rawtell = on_command("rawtell", priority=10, block=True)
 @rawtell.handle()
 async def _handle_rawtell(args: Message = CommandArg()) -> None:
     try:
-        answer = handle_rawtell(args.extract_plain_text(), selector=algorithm_selector)
+        answer = handle_rawtell(
+            args.extract_plain_text(),
+            selector=algorithm_selector,
+            detailed=plugin_config.detailed,
+        )
     except Exception:
         logger.exception("rAwTell failed to decide")
         await rawtell.finish("决策算法暂时不可用，请稍后再试。")

@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from ..protocol import (
     OPERATOR_COUNT,
     Algorithm,
+    Explanation,
     DecisionContext,
     derive_algorithm_operators,
 )
@@ -76,23 +77,45 @@ def verdict(votes: Sequence[int]) -> bool:
     return sum(votes) >= QUORUM
 
 
+def _principal_and_votes(operators: Sequence[int]) -> tuple[int, tuple[int, ...]]:
+    mask = principal(operators)
+    votes = tuple(vote(mask, split_operator(operator)[1]) for operator in operators)
+    return mask, votes
+
+
 def decide(operators: Sequence[int]) -> bool:
     """Run the principal/ballot vote over one set of 13 operators."""
-    mask = principal(operators)
-    votes = [vote(mask, split_operator(operator)[1]) for operator in operators]
+    _, votes = _principal_and_votes(operators)
     return verdict(votes)
 
 
-def calculate(context: DecisionContext) -> bool:
-    """Derive 13 operators and decide by their 13-vote quorum."""
-    operators = derive_algorithm_operators(
+def _operators(context: DecisionContext) -> tuple[int, ...]:
+    return derive_algorithm_operators(
         context,
         name=NAME,
         version=VERSION,
         stage="operators",
         count=OPERATOR_COUNT,
     )
-    return decide(operators)
+
+
+def calculate(context: DecisionContext) -> bool:
+    """Derive 13 operators and decide by their 13-vote quorum."""
+    _, votes = _principal_and_votes(_operators(context))
+    return verdict(votes)
+
+
+def explain(context: DecisionContext) -> Explanation:
+    """Return the principal mask, all votes and the quorum verdict."""
+    mask, votes = _principal_and_votes(_operators(context))
+    affirmative = verdict(votes)
+    steps = (
+        f"主算子：0x{mask:08X}",
+        f"选票：{' '.join(str(ballot) for ballot in votes)}",
+        f"肯定票：{sum(votes)}/{OPERATOR_COUNT}"
+        f"（阈值 {QUORUM}）→ {'肯定' if affirmative else '否定'}",
+    )
+    return Explanation(affirmative, steps)
 
 
 ALGORITHM = Algorithm(
@@ -100,4 +123,6 @@ ALGORITHM = Algorithm(
     version=VERSION,
     weight=WEIGHT,
     calculate=calculate,
+    display_name="裁判",
+    explain=explain,
 )

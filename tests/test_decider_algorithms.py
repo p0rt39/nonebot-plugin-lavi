@@ -565,3 +565,110 @@ def test_obi_ifa_restart_uses_the_new_first_verdict(monkeypatch) -> None:
         "obi:first:1",
         "obi:second:1",
     ]
+
+
+def test_count_operators_tracks_builtin_algorithm_usage() -> None:
+    from nonebot_plugin_rawtell.protocol import count_operators
+    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+
+    expected = {"dayan": 24, "geomancy": 16, "trial": 13}
+
+    for algorithm in ALGORITHMS:
+        with count_operators() as tally:
+            algorithm.calculate(_context(7))
+
+        if algorithm.name in expected:
+            assert tally.count == expected[algorithm.name]
+        else:
+            assert tally.count > 0
+
+
+def test_each_algorithm_explanation_matches_its_calculation() -> None:
+    from nonebot_plugin_rawtell.protocol import Explanation, count_operators
+    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+
+    for algorithm in ALGORITHMS:
+        assert algorithm.explain is not None
+        context = _context(7)
+        with count_operators() as explain_tally:
+            explanation = algorithm.explain(context)
+        with count_operators() as calculate_tally:
+            answer = algorithm.calculate(context)
+
+        assert isinstance(explanation, Explanation)
+        assert explanation.answer == answer
+        assert explanation.steps
+        assert explain_tally.count == calculate_tally.count
+
+
+def test_builtin_algorithms_expose_friendly_display_names() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+
+    labels = {algorithm.name: algorithm.label for algorithm in ALGORITHMS}
+
+    assert labels["dayan"] == "大衍"
+    assert labels["geomancy"] == "地占"
+    assert labels["trial"] == "裁判"
+    assert labels["obi-ifa"] == "宝螺"
+
+
+def test_dayan_explanation_lists_every_line_and_the_parity_verdict() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.dayan import explain
+
+    result = explain(_context(7))
+    line_steps = [step for step in result.steps if "爻：" in step]
+
+    assert len(line_steps) == 6
+    assert line_steps[0].startswith("初爻：")
+    assert line_steps[-1].startswith("上爻：")
+    assert result.steps[-1].startswith("阳爻 ")
+    assert ("肯定" if result.answer else "否定") in result.steps[-1]
+
+
+def test_geomancy_explanation_lists_every_chart_layer() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.geomancy import explain
+
+    result = explain(_context(7))
+    labels = [step.split("：", 1)[0] for step in result.steps]
+
+    assert labels == ["四母", "四女", "四侄", "右见证", "裁判"]
+    assert ("稳定" if result.answer else "流动") in result.steps[-1]
+
+
+def test_trial_explanation_lists_principal_and_ballots() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.trial import explain
+
+    result = explain(_context(7))
+
+    assert result.steps[0].startswith("主算子：0x")
+    assert result.steps[1].startswith("选票：")
+    assert result.steps[2].startswith("肯定票：")
+    assert ("肯定" if result.answer else "否定") in result.steps[2]
+
+
+def test_obi_ifa_explanation_records_rounds_and_restarts(monkeypatch) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import explain
+
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": (1, 1, 1, 1),
+            "obi:second:0": (1, 0, 0, 0),
+            "ifa:0": (0, 0, 0, 0, 0, 0, 0, 0),
+            "obi:first:1": (1, 0, 0, 0),
+            "obi:second:1": (1, 1, 0, 0),
+        },
+    )
+
+    result = explain(_context(1))
+
+    assert result.answer is False
+    assert stages == [
+        "obi:first:0",
+        "obi:second:0",
+        "ifa:0",
+        "obi:first:1",
+        "obi:second:1",
+    ]
+    assert any("重开一轮" in step for step in result.steps)
+    assert any(step.startswith("第 2 轮：首掷") for step in result.steps)

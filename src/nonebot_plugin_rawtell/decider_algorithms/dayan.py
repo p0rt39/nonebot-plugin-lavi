@@ -18,7 +18,12 @@ changed-hexagram readings (5/8 yin) are deliberately not used.
 
 from collections.abc import Sequence
 
-from ..protocol import Algorithm, DecisionContext, derive_algorithm_bits
+from ..protocol import (
+    Algorithm,
+    Explanation,
+    DecisionContext,
+    derive_algorithm_bits,
+)
 
 NAME = "dayan"
 VERSION = 1
@@ -35,6 +40,7 @@ LATER_CHANGE_MARKS = 1
 LATER_CHANGES = CHANGES_PER_LINE - 1
 LINE_MARKS = FIRST_CHANGE_MARKS + LATER_CHANGES * LATER_CHANGE_MARKS
 CAST_MARKS = LINE_COUNT * LINE_MARKS
+LINE_NAMES = ("初爻", "二爻", "三爻", "四爻", "五爻", "上爻")
 
 OLD_YIN = 6
 YOUNG_YANG = 7
@@ -60,13 +66,20 @@ def later_change_removal(mark: int) -> int:
     return LATER_CHANGE_REMOVALS[mark & 1]
 
 
-def cast_line(marks: Sequence[int]) -> int:
-    """Cast one line value from its first-change and later-change marks."""
+def line_changes(marks: Sequence[int]) -> tuple[int, int, int, int]:
+    """Return the three removals and the remaining stalk count for one line."""
     if len(marks) != LINE_MARKS:
         raise ValueError(f"expected {LINE_MARKS} line marks")
-    remaining = ACTIVE_STALKS - first_change_removal(marks[:FIRST_CHANGE_MARKS])
-    remaining -= later_change_removal(marks[FIRST_CHANGE_MARKS])
-    remaining -= later_change_removal(marks[FIRST_CHANGE_MARKS + LATER_CHANGE_MARKS])
+    first = first_change_removal(marks[:FIRST_CHANGE_MARKS])
+    second = later_change_removal(marks[FIRST_CHANGE_MARKS])
+    third = later_change_removal(marks[FIRST_CHANGE_MARKS + LATER_CHANGE_MARKS])
+    remaining = ACTIVE_STALKS - first - second - third
+    return first, second, third, remaining
+
+
+def cast_line(marks: Sequence[int]) -> int:
+    """Cast one line value from its first-change and later-change marks."""
+    _, _, _, remaining = line_changes(marks)
     line = remaining // 4
     if line not in (OLD_YIN, YOUNG_YANG, YOUNG_YIN, OLD_YANG):
         raise ValueError(f"derived invalid line value: {line}")
@@ -95,8 +108,7 @@ def yang_parity(lines: Sequence[int]) -> bool:
     return sum(is_yang(line) for line in lines) % 2 == 1
 
 
-def calculate(context: DecisionContext) -> bool:
-    """Cast one hexagram and answer from the parity of its yang lines."""
+def _cast(context: DecisionContext) -> tuple[tuple[int, ...], tuple[int, ...]]:
     marks = derive_algorithm_bits(
         context,
         name=NAME,
@@ -104,7 +116,34 @@ def calculate(context: DecisionContext) -> bool:
         stage="hexagram",
         count=CAST_MARKS,
     )
-    return yang_parity(cast_hexagram(marks))
+    return marks, cast_hexagram(marks)
+
+
+def calculate(context: DecisionContext) -> bool:
+    """Cast one hexagram and answer from the parity of its yang lines."""
+    return yang_parity(_cast(context)[1])
+
+
+def explain(context: DecisionContext) -> Explanation:
+    """Return the line-by-line stalk removals and the yang parity verdict."""
+    marks, lines = _cast(context)
+    steps: list[str] = []
+    for index, line in enumerate(lines):
+        chunk = marks[index * LINE_MARKS : (index + 1) * LINE_MARKS]
+        first, second, third, remaining = line_changes(chunk)
+        polarity = "阳" if is_yang(line) else "阴"
+        steps.append(
+            f"{LINE_NAMES[index]}：去 {first}+{second}+{third}，"
+            f"余 {remaining}，{remaining}÷4={line}（{polarity}）"
+        )
+
+    yang_count = sum(is_yang(line) for line in lines)
+    affirmative = yang_parity(lines)
+    steps.append(
+        f"阳爻 {yang_count} 枚，奇偶：{'奇' if affirmative else '偶'} → "
+        f"{'肯定' if affirmative else '否定'}"
+    )
+    return Explanation(affirmative, tuple(steps))
 
 
 ALGORITHM = Algorithm(
@@ -112,4 +151,6 @@ ALGORITHM = Algorithm(
     version=VERSION,
     weight=WEIGHT,
     calculate=calculate,
+    display_name="大衍",
+    explain=explain,
 )

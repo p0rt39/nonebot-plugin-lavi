@@ -40,7 +40,7 @@ def _algorithm(
     )
 
 
-def test_fixed_selector_returns_named_calculator() -> None:
+def test_fixed_selector_returns_named_algorithm() -> None:
     from nonebot_plugin_rawtell.selector import build_selector
 
     chosen, chosen_calls = _algorithm("chosen", 1, True)
@@ -48,10 +48,10 @@ def test_fixed_selector_returns_named_calculator() -> None:
     selector = build_selector(name="chosen", algorithms=(other, chosen))
     context = _context()
 
-    calculator = selector(context)
+    algorithm = selector(context)
 
-    assert calculator is chosen.calculate
-    assert calculator(context)
+    assert algorithm is chosen
+    assert algorithm.calculate(context)
     assert chosen_calls == [context]
     assert other_calls == []
 
@@ -67,7 +67,7 @@ def test_random_selector_is_deterministic_for_the_same_context() -> None:
     assert selector(context) is selector(context)
 
 
-def test_random_selector_calls_only_the_chosen_calculator() -> None:
+def test_random_selector_calls_only_the_chosen_algorithm() -> None:
     from nonebot_plugin_rawtell.selector import build_selector
 
     first, first_calls = _algorithm("first", 1, True)
@@ -75,7 +75,7 @@ def test_random_selector_calls_only_the_chosen_calculator() -> None:
     selector = build_selector(name="random", algorithms=(first, second))
     context = _context()
 
-    assert selector(context)(context)
+    assert selector(context).calculate(context)
     assert len(first_calls) + len(second_calls) == 1
 
 
@@ -127,7 +127,7 @@ def test_zero_weight_algorithm_is_disabled() -> None:
     selector = build_selector(name="random", algorithms=algorithms)
     context = _context()
 
-    assert not selector(context)(context)
+    assert not selector(context).calculate(context)
     assert disabled_calls == []
     assert enabled_calls == [context]
     with pytest.raises(ValueError, match="unknown algorithm"):
@@ -184,6 +184,6 @@ def test_default_selector_uses_the_real_registry() -> None:
     from nonebot_plugin_rawtell.selector import build_selector
 
     context = _context()
-    calculator = build_selector()(context)
+    algorithm = build_selector()(context)
 
-    assert isinstance(calculator(context), bool)
+    assert isinstance(algorithm.calculate(context), bool)
