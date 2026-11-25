@@ -1,7 +1,7 @@
 # rAwTell — Agent 指南（根）
 
-`nonebot-plugin-rawtell` 是一个 NoneBot2 插件。当前处于初始化阶段：骨架、工具链与验证流程已就位，
-业务功能尚未实现。
+`nonebot-plugin-rawtell` 是一个 NoneBot2 插件。当前已实现 `/rawtell` 二元决策命令、
+可插拔算法注册表与算法选择策略；决策历史与持久化尚未实现。
 
 本文件只包含**全仓库通用**的指令，以及**阅读各级子目录特化 AGENTS.md 的要求**。
 

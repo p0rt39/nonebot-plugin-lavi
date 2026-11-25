@@ -29,14 +29,18 @@ prek run --all-files
 
 - `conftest.py`：注册 OneBot V11 适配器，用 `nonebot.load_from_toml("pyproject.toml")` 加载插件。
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
-- `test_decision.py`：二元决策骨架的行为契约——参数解析的两种模式、选择器/计算器共享同一
-  `DecisionContext` 且各调用一次、`capture_context()` 的进程与 UTC 时间采样、异常传播。
-- `plugin_test.py`：插件加载与元数据冒烟测试。
+- `test_decision.py`：二元决策核心契约——参数解析的两种模式、选择器/计算器共享同一
+  `DecisionContext` 且各调用一次、`capture_context()` 的时间/进程/熵采样、异常传播。
+- `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵。
+- `test_selector.py`：固定/随机选择、零权重禁用、未知/重名算法拒绝、种子域分离。
+- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试。
 
-`test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher；命令接入后
-再在 `plugin_test.py` 增加端到端交互。
+`test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。命令级测试
+通过 monkeypatch 替换插件入口的 `algorithm_selector`，使回复可精确断言，同时保留真实的
+命令解析与 `finish()` 路径。
 
 新增功能时按 `<subsystem>` 新建 `test_<subsystem>.py`，命令级交互测试留在 `plugin_test.py`。
+算法测试使用固定 `DecisionContext` 做确定性断言，不写依赖概率分布的统计测试。
 
 ## 隔离约定
 
