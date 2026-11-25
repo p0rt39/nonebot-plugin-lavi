@@ -1,6 +1,18 @@
 """Rendering for decision answers and detailed traces."""
 
 
+def test_unknown_algorithm_lists_available_choices() -> None:
+    from nonebot_plugin_rawtell.render import render_unknown_algorithm
+
+    assert render_unknown_algorithm(
+        "missing",
+        available=("dayan（大衍）", "trial（裁判）"),
+    ) == (
+        "⚠️ 未知算法：「missing」\n"
+        "可用算法：dayan（大衍）、trial（裁判）；random（随机）"
+    )
+
+
 def test_answer_is_rendered_as_ritual_heading_and_result() -> None:
     from nonebot_plugin_rawtell.render import render_answer
 

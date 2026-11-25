@@ -156,3 +156,67 @@ async def test_rawtell_detailed_mode_shows_decider_count_and_trace(
             bot=bot,
         )
         ctx.should_finished()
+
+
+async def test_rawtell_single_argument_selects_algorithm(app: App, monkeypatch):
+    from datetime import datetime, timezone
+
+    from nonebot.adapters.onebot.v11 import Bot
+    from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
+
+    import nonebot_plugin_rawtell as plugin
+    import nonebot_plugin_rawtell.command as command_module
+    from nonebot_plugin_rawtell.protocol import DecisionContext
+    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+
+    context = DecisionContext(
+        timestamp=datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc),
+        pid=10,
+        nonce1=1,
+        nonce2=2,
+        nonce3=3,
+    )
+    trial = next(algorithm for algorithm in ALGORITHMS if algorithm.name == "trial")
+    expected = "是" if trial.calculate(context) else "否"
+    monkeypatch.setattr(command_module, "capture_context", lambda: context)
+    monkeypatch.setattr(
+        plugin,
+        "algorithm_selector",
+        lambda _context: _algorithm(result=True),
+    )
+    event = fake_private_message_event_v11(message="/rawtell trial")
+
+    async with app.test_matcher(plugin.rawtell) as ctx:
+        adapter = nonebot.get_adapter(OnebotV11Adapter)
+        bot = ctx.create_bot(base=Bot, adapter=adapter)
+        ctx.receive_event(bot, event)
+        ctx.should_call_send(
+            event,
+            f"🔮 决断仪式：「裁判」\n✨ 决断结果：「{expected}」",
+            result=None,
+            bot=bot,
+        )
+        ctx.should_finished()
+
+
+async def test_rawtell_three_arguments_reject_unknown_algorithm(app: App):
+    from nonebot.adapters.onebot.v11 import Bot
+    from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
+
+    import nonebot_plugin_rawtell as plugin
+
+    event = fake_private_message_event_v11(message="/rawtell missing 红茶 咖啡")
+
+    async with app.test_matcher(plugin.rawtell) as ctx:
+        adapter = nonebot.get_adapter(OnebotV11Adapter)
+        bot = ctx.create_bot(base=Bot, adapter=adapter)
+        ctx.receive_event(bot, event)
+        ctx.should_call_send(
+            event,
+            "⚠️ 未知算法：「missing」\n"
+            "可用算法：dayan（大衍）、geomancy（地占）、obi-ifa（宝螺）、"
+            "trial（裁判）；random（随机）",
+            result=None,
+            bot=bot,
+        )
+        ctx.should_finished()

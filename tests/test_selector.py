@@ -135,12 +135,29 @@ def test_zero_weight_algorithm_is_disabled() -> None:
 
 
 def test_unknown_algorithm_is_rejected() -> None:
-    from nonebot_plugin_rawtell.selector import build_selector
+    from nonebot_plugin_rawtell.selector import (
+        UnknownAlgorithmError,
+        build_selector,
+    )
 
     algorithm, _ = _algorithm("known", 1, True)
 
-    with pytest.raises(ValueError, match="unknown algorithm"):
+    with pytest.raises(UnknownAlgorithmError, match="unknown algorithm") as caught:
         build_selector(name="missing", algorithms=(algorithm,))
+
+    assert caught.value.name == "missing"
+
+
+def test_available_algorithms_are_enabled_and_sorted() -> None:
+    from nonebot_plugin_rawtell.selector import available_algorithms
+
+    disabled, _ = _algorithm("disabled", 0, True)
+    beta, _ = _algorithm("beta", 1, True)
+    alpha, _ = _algorithm("alpha", 1, False)
+
+    enabled = available_algorithms((beta, disabled, alpha))
+
+    assert [algorithm.name for algorithm in enabled] == ["alpha", "beta"]
 
 
 def test_duplicate_algorithm_names_are_rejected() -> None:

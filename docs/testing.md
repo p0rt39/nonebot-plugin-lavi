@@ -29,7 +29,11 @@ prek run --all-files
 
 - `conftest.py`：注册 OneBot V11 适配器，用 `nonebot.load_from_toml("pyproject.toml")` 加载插件。
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
-- `test_decision.py`：二元决策核心契约——参数解析的两种模式、选择器/算法共享同一
+- `test_command.py`：`handle_rawtell()` 的字段数分派——1 字段算法名与未知名称静默回退、
+  2 字段保持两个候选、3 字段算法名加候选与未知名称中止、4 个及以上字段保持原行为，
+  以及命令参数对默认选择器的覆盖。
+- `test_decision.py`：二元决策核心契约——`parse_invocation()` 的字段数分派与
+  `parse_options()` 的两种模式、选择器/算法共享同一
   `DecisionContext` 且各调用一次、`Decision` 的稳定算法名与显示名、算法算子数（不含
   选择器）、`trace` 只调用 `explain` 且不重复调用 `calculate`、`capture_context()` 的
   时间/进程/熵采样、异常传播。
@@ -40,15 +44,16 @@ prek run --all-files
   `explain()` 与 `calculate()` 答案一致且给出非空、按算法结构组织的步骤；内置算法的
   显示名与回退规则。
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
-  未知/重名算法拒绝、种子域分离。
-- `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤；
-  不依赖字体宽度或边框。
+  `available_algorithms()` 的过滤与排序、未知/重名算法拒绝、种子域分离。
+- `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤，
+  以及未知算法时的可用算法列表；不依赖字体宽度或边框。
 - `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试
-  （断言完整换行回复与详细模式输出）。
+  （单字段算法覆盖、三字段未知算法中止、详细模式输出与完整换行回复）。
 
-`test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。命令级测试
-通过 monkeypatch 替换插件入口的 `algorithm_selector`，使回复可精确断言，同时保留真实的
-命令解析与 `finish()` 路径。
+`test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。
+`test_command.py` 直接调用 `command.handle_rawtell()`。命令级测试通过 monkeypatch 替换
+插件入口的 `algorithm_selector` 或 `command.capture_context`，使回复可精确断言，同时保留
+真实的命令解析与 `finish()` 路径。
 
 新增功能时按 `<subsystem>` 新建 `test_<subsystem>.py`，命令级交互测试留在 `plugin_test.py`。
 算法测试使用固定 `DecisionContext` 做确定性断言，不写依赖概率分布的统计测试。

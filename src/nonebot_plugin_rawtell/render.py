@@ -1,10 +1,21 @@
 """Render decision answers and detailed traces as adapter-safe text."""
 
+from collections.abc import Sequence
+
 HEADER = "🔮 决断仪式"
 
 
 def _single_line(text: str) -> str:
     return " ".join(text.split())
+
+
+def render_unknown_algorithm(requested: str, *, available: Sequence[str]) -> str:
+    """Return the usable algorithm names after an unknown selection."""
+    options = "、".join(available)
+    return (
+        f"⚠️ 未知算法：「{_single_line(requested)}」\n"
+        f"可用算法：{options}；random（随机）"
+    )
 
 
 def render_answer(answer: str, *, decider: str) -> str:
