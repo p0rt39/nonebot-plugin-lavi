@@ -1,14 +1,19 @@
-"""Cross-module data models and seed derivation for rAwTell."""
+"""Cross-module data models, seed derivation and bit derivation for rAwTell."""
 
 import os
 import hashlib
 import secrets
 from typing import TypeAlias
 from datetime import datetime, timezone
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 from pydantic import Field, BaseModel
+
+OPERATOR_COUNT = 13
+OPERATOR_BITS = 64
 
 
 class DecisionContext(BaseModel):
@@ -30,8 +35,17 @@ class DecisionContext(BaseModel):
 Calculator: TypeAlias = Callable[[DecisionContext], bool]
 """Return ``True`` for the affirmative/first option, ``False`` otherwise."""
 
-Selector: TypeAlias = Callable[[DecisionContext], Calculator]
-"""Pick one calculator from a context; it cannot see the command text."""
+
+@dataclass(frozen=True, slots=True)
+class Explanation:
+    """One algorithm result with human-readable calculation steps."""
+
+    answer: bool
+    steps: tuple[str, ...]
+
+
+Explain: TypeAlias = Callable[[DecisionContext], Explanation]
+"""Return the answer plus the intermediate values that produced it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +60,8 @@ class Algorithm:
     version: int
     weight: int
     calculate: Calculator
+    display_name: str | None = None
+    explain: Explain | None = None
 
     def __post_init__(self) -> None:
         if not self.name or self.name == "random":
@@ -56,6 +72,56 @@ class Algorithm:
             raise ValueError(f"{self.name}: weight must be >= 0")
         if not callable(self.calculate):
             raise TypeError(f"{self.name}: calculate must be callable")
+        if self.display_name is not None and not self.display_name:
+            raise ValueError(f"{self.name}: display_name must be non-empty")
+        if self.explain is not None and not callable(self.explain):
+            raise TypeError(f"{self.name}: explain must be callable")
+
+    @property
+    def label(self) -> str:
+        """Return the user-facing name, falling back to the stable name."""
+        return self.display_name or self.name
+
+
+Selector: TypeAlias = Callable[[DecisionContext], Algorithm]
+"""Pick one algorithm from a context; it cannot see the command text."""
+
+
+@dataclass(frozen=True, slots=True)
+class Decision:
+    """The answer together with the algorithm and operator count behind it."""
+
+    answer: str
+    algorithm: str
+    display_name: str
+    operator_count: int
+    steps: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
+class OperatorTally:
+    """Mutable count of 64-bit operators derived within one decision."""
+
+    count: int = 0
+
+    def increment(self) -> None:
+        self.count += 1
+
+
+_operator_tally: ContextVar[OperatorTally | None] = ContextVar(
+    "rawtell_operator_tally", default=None
+)
+
+
+@contextmanager
+def count_operators() -> Iterator[OperatorTally]:
+    """Count the operators derived inside the block without changing values."""
+    tally = OperatorTally()
+    token = _operator_tally.set(tally)
+    try:
+        yield tally
+    finally:
+        _operator_tally.reset(token)
 
 
 def capture_context() -> DecisionContext:
@@ -86,9 +152,73 @@ def derive_seed(context: DecisionContext, *, purpose: str) -> int:
         )
     )
     digest = hashlib.blake2b(material.encode(), digest_size=8, person=b"rawtell")
+    tally = _operator_tally.get()
+    if tally is not None:
+        tally.increment()
     return int.from_bytes(digest.digest(), "big")
+
+
+def _algorithm_purpose(name: str, version: int) -> str:
+    return f"algorithm:{name}:v{version}"
 
 
 def derive_algorithm_seed(context: DecisionContext, *, name: str, version: int) -> int:
     """Derive the seed for one algorithm, separated by its stable identity."""
-    return derive_seed(context, purpose=f"algorithm:{name}:v{version}")
+    return derive_seed(context, purpose=_algorithm_purpose(name, version))
+
+
+def derive_algorithm_operators(
+    context: DecisionContext,
+    *,
+    name: str,
+    version: int,
+    stage: str,
+    count: int,
+) -> tuple[int, ...]:
+    """Derive independent full-width operators for one algorithm stage."""
+    if not stage:
+        raise ValueError("stage must be non-empty")
+    if count < 0:
+        raise ValueError("count must be non-negative")
+    return tuple(
+        derive_seed(
+            context,
+            purpose=f"{_algorithm_purpose(name, version)}:{stage}:operator:{index}",
+        )
+        for index in range(1, count + 1)
+    )
+
+
+def derive_bits(
+    context: DecisionContext, *, purpose: str, count: int
+) -> tuple[int, ...]:
+    """Derive ``count`` independent bits for ``purpose``.
+
+    Each bit is the most significant bit of its own BLAKE2b operator, so the
+    sampled context data participates directly in the computation instead of
+    seeding a separate PRNG. Separate operators keep the marks independent.
+    """
+    if count < 0:
+        raise ValueError("count must be non-negative")
+    return tuple(
+        (derive_seed(context, purpose=f"{purpose}:operator:{index}") >> 63) & 1
+        for index in range(1, count + 1)
+    )
+
+
+def derive_algorithm_bits(
+    context: DecisionContext,
+    *,
+    name: str,
+    version: int,
+    stage: str,
+    count: int,
+) -> tuple[int, ...]:
+    """Derive independent bits for one stage of a named algorithm version."""
+    if not stage:
+        raise ValueError("stage must be non-empty")
+    return derive_bits(
+        context,
+        purpose=f"{_algorithm_purpose(name, version)}:{stage}",
+        count=count,
+    )

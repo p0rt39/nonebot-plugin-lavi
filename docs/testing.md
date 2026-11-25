@@ -29,12 +29,22 @@ prek run --all-files
 
 - `conftest.py`：注册 OneBot V11 适配器，用 `nonebot.load_from_toml("pyproject.toml")` 加载插件。
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
-- `test_decision.py`：二元决策核心契约——参数解析的两种模式、选择器/计算器共享同一
-  `DecisionContext` 且各调用一次、`capture_context()` 的时间/进程/熵采样、异常传播。
-- `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵。
+- `test_decision.py`：二元决策核心契约——参数解析的两种模式、选择器/算法共享同一
+  `DecisionContext` 且各调用一次、`Decision` 的稳定算法名与显示名、算法算子数（不含
+  选择器）、`trace` 只调用 `explain` 且不重复调用 `calculate`、`capture_context()` 的
+  时间/进程/熵采样、异常传播。
+- `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵；
+  地占盾盘的参考盘、转置/异或不变量与裁判偶数性；Obi 字母、Ifa 奥杜奇偶与
+  Eyeife 转 Ifa、第二次 Obi 确认、Ifa 确认与重开分支；`trial` 的位域拆分、
+  逐位多数主算子、内积奇偶、13 票阈值与算法/选择器 purpose 域分离；每个算法的
+  `explain()` 与 `calculate()` 答案一致且给出非空、按算法结构组织的步骤；内置算法的
+  显示名与回退规则。
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
   未知/重名算法拒绝、种子域分离。
-- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试。
+- `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤；
+  不依赖字体宽度或边框。
+- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试
+  （断言完整换行回复与详细模式输出）。
 
 `test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。命令级测试
 通过 monkeypatch 替换插件入口的 `algorithm_selector`，使回复可精确断言，同时保留真实的

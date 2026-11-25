@@ -9,6 +9,9 @@ class ScopedConfig(BaseModel):
     algorithm: str = "random"
     """Registered algorithm name, or ``"random"`` to choose per decision."""
 
+    detailed: bool = False
+    """Show the selected decider, operator count and calculation steps."""
+
 
 class Config(BaseModel):
     """Top-level config holder for NoneBot plugin loading."""

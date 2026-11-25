@@ -3,13 +3,17 @@
 import hashlib
 from collections.abc import Sequence
 
-from .protocol import Selector, Algorithm, DecisionContext, derive_seed
+from .protocol import (
+    OPERATOR_BITS,
+    OPERATOR_COUNT,
+    Selector,
+    Algorithm,
+    DecisionContext,
+    derive_seed,
+)
 from .decider_algorithms import ALGORITHMS
 
 RANDOM_SELECTION = "random"
-
-OPERATOR_COUNT = 13
-OPERATOR_BITS = 64
 
 
 def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:
@@ -106,11 +110,11 @@ def build_selector(
     enabled = _enabled(algorithms)
 
     if name == RANDOM_SELECTION:
-        return lambda context: choose_algorithm(context, enabled).calculate
+        return lambda context: choose_algorithm(context, enabled)
 
     for algorithm in enabled:
         if algorithm.name == name:
             chosen = algorithm
-            return lambda _context: chosen.calculate
+            return lambda _context: chosen
 
     raise ValueError(f"unknown algorithm: {name!r}")
