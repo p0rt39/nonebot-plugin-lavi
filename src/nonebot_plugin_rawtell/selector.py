@@ -3,13 +3,17 @@
 import hashlib
 from collections.abc import Sequence
 
-from .protocol import Selector, Algorithm, DecisionContext, derive_seed
+from .protocol import (
+    OPERATOR_BITS,
+    OPERATOR_COUNT,
+    Selector,
+    Algorithm,
+    DecisionContext,
+    derive_seed,
+)
 from .decider_algorithms import ALGORITHMS
 
 RANDOM_SELECTION = "random"
-
-OPERATOR_COUNT = 13
-OPERATOR_BITS = 64
 
 
 def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:

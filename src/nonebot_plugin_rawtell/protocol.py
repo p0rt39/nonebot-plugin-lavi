@@ -10,6 +10,9 @@ from collections.abc import Callable
 
 from pydantic import Field, BaseModel
 
+OPERATOR_COUNT = 13
+OPERATOR_BITS = 64
+
 
 class DecisionContext(BaseModel):
     """One sampling of runtime state shared by a selector and its calculator.
@@ -96,6 +99,28 @@ def _algorithm_purpose(name: str, version: int) -> str:
 def derive_algorithm_seed(context: DecisionContext, *, name: str, version: int) -> int:
     """Derive the seed for one algorithm, separated by its stable identity."""
     return derive_seed(context, purpose=_algorithm_purpose(name, version))
+
+
+def derive_algorithm_operators(
+    context: DecisionContext,
+    *,
+    name: str,
+    version: int,
+    stage: str,
+    count: int,
+) -> tuple[int, ...]:
+    """Derive independent full-width operators for one algorithm stage."""
+    if not stage:
+        raise ValueError("stage must be non-empty")
+    if count < 0:
+        raise ValueError("count must be non-negative")
+    return tuple(
+        derive_seed(
+            context,
+            purpose=f"{_algorithm_purpose(name, version)}:{stage}:operator:{index}",
+        )
+        for index in range(1, count + 1)
+    )
 
 
 def derive_bits(

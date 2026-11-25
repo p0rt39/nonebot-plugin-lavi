@@ -12,7 +12,7 @@
 - `/rawtell` 命令：回答“是/否”，或从两个空白分隔的候选项中选一个。
 - 不依赖 NoneBot 的决策核心：参数解析、共享决策上下文、选择器/计算器编排。
 - 可插拔算法：`decider_algorithms/` 下每个算法一个文件，内置 `dayan`（大衍筮法）、
-  `geomancy`（地占盾盘）与 `obi-ifa`（Obi 宝螺 / Ifa 奥杜）。
+  `geomancy`（地占盾盘）、`obi-ifa`（Obi 宝螺 / Ifa 奥杜）与 `trial`（十三算子合议）。
 - 算法选择策略：默认每次随机，也可通过 `RAWTELL__ALGORITHM` 固定算法。
 - 分层 `AGENTS.md` 规则文件与 `docs/` 描述性参考。
 - ruff、BasedPyright、pytest/nonebug、prek 的检查链。
@@ -44,7 +44,7 @@ uv sync --all-groups
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `dayan`、`geomancy` 或 `obi-ifa` |
+| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `dayan`、`geomancy`、`obi-ifa` 或 `trial` |
 
 ## 内置算法
 
@@ -60,10 +60,14 @@ uv sync --all-groups
   为肯定，Okana（1 枚）与 Oyekun（0 枚）为否定。若首轮是 Eyeife（2:2），直接转 Ifa；
   否则再掷一次 Obi：第二次为 Eyeife 时按首轮结果，第二次不是 Eyeife 时转 Ifa；Ifa 为真
   按首轮结果，Ifa 为假则重新开始一轮。Ifa 以八枚宝螺组成奥杜，按单爻数量的奇偶判定。
+- `trial`：从 `DecisionContext` 派生 13 个 64 位算子；每个算子的高 32 位作为主算子份额，
+  低 32 位作为选票。13 个高半按位多数选出 32 位主算子（全零时取 1），主算子再与每张
+  选票做内积奇偶，得到 13 票；7 票及以上回答“是”。主算子与选票使用不相交的位域，
+  因此在理想 BLAKE2b 模型下，13 票在给定主算子后独立且各半，最终结果严格 50/50。
 
-三个算法都是对传统占卜结构的程序化模拟，用于决策娱乐，不构成宗教实践建议。每个爻位/
-宝螺位/蓍草变数都从 `DecisionContext` 单独派生的 BLAKE2b 算子取最高位，与选择器使用
-同一类位级采样方式，但 purpose 域与算法身份绑定，互不相关。
+前三个算法是对传统占卜结构的程序化模拟，`trial` 是位级合议结构；它们都用于决策娱乐，
+不构成宗教实践建议。每个爻位/宝螺位/蓍草变数/选票都从 `DecisionContext` 单独派生的
+BLAKE2b 算子取值，与选择器使用同一类位级采样方式，但 purpose 域与算法身份绑定，互不相关。
 
 ## 命令
 
@@ -108,7 +112,8 @@ src/nonebot_plugin_rawtell/
     ├── __init__.py          # 显式算法注册表
     ├── dayan.py             # 大衍筮法算法
     ├── geomancy.py          # 地占盾盘算法
-    └── obi_ifa.py           # Obi / Ifa 宝螺算法
+    ├── obi_ifa.py           # Obi / Ifa 宝螺算法
+    └── trial.py             # 十三算子合议算法
 tests/
 ├── conftest.py              # NoneBot 初始化与数据目录隔离
 ├── fake.py                  # OneBot V11 假事件

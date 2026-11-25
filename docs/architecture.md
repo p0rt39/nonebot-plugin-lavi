@@ -9,7 +9,7 @@
 src/nonebot_plugin_rawtell/
 ├── __init__.py              # NoneBot 集成：__plugin_meta__、配置、data_dir、matcher 注册
 ├── config.py                # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
-├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型、种子与位派生
+├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型、种子/位/算子派生
 ├── decision.py              # 参数解析与选择器→计算器编排（无 NoneBot 依赖）
 ├── selector.py              # 算法注册表校验与选择策略
 ├── command.py               # /rawtell 处理函数（不持有 Matcher）
@@ -17,7 +17,8 @@ src/nonebot_plugin_rawtell/
     ├── __init__.py          # 显式算法注册表
     ├── dayan.py             # 大衍筮法算法
     ├── geomancy.py          # 地占盾盘算法
-    └── obi_ifa.py           # Obi / Ifa 宝螺算法
+    ├── obi_ifa.py           # Obi / Ifa 宝螺算法
+    └── trial.py             # 十三算子合议算法
 tests/
 ├── conftest.py              # NoneBot 初始化、适配器注册、数据目录隔离
 ├── fake.py                  # OneBot V11 假事件构造
@@ -64,6 +65,8 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   选择器用 `selector:operator:<1..13>`。算法通过 `derive_algorithm_bits(...)` 以
   `algorithm:<name>:v<version>:<stage>:operator:<i>` 为每个爻位/宝螺位单独派生 64 位
   算子并取最高位，使采样数据直接参与运算，且与选择器的 purpose 域分离。
+  `derive_algorithm_operators(...)` 使用同一 purpose 约定返回完整 64 位算子，供
+  `trial` 这类需要整字而不仅是最高位的算法使用。
 - `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
@@ -72,8 +75,9 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 
 ## 内置算法
 
-三个算法都不创建 `random.Random`，而是让 `DecisionContext` 直接参与位级运算：
-`protocol.derive_algorithm_bits()` 为每个采样点派生一个 64 位 BLAKE2b 算子并取最高位。
+四个算法都不创建 `random.Random`，而是让 `DecisionContext` 直接参与位级运算：
+`protocol.derive_algorithm_bits()` 为每个采样点派生一个 64 位 BLAKE2b 算子并取最高位；
+`trial` 则通过 `derive_algorithm_operators()` 使用完整的 64 位算子。
 
 - `dayan`：五十根蓍草取一根不用，余四十九根；每爻三变，第一变以 3:1 移除五根或
   九根，后两变各以 1:1 移除四根或八根，三变后余数除以四得到 6/7/8/9。爻值概率为
@@ -88,6 +92,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   首轮非 Eyeife 时再掷一次 Obi：第二次 Eyeife 则按首轮结果，否则转 Ifa；Ifa 为真按
   首轮结果，Ifa 为假重开一轮。Ifa 由八枚宝螺组成奥杜，以单爻数量奇偶判定。重开时
   每个阶段使用带轮次的 purpose，因此每轮都得到新的采样位；该协议最终先验仍为 50/50。
+- `trial`：派生 13 个 64 位算子，每个算子的高 32 位作为主算子份额、低 32 位作为选票。
+  13 个高半按位多数得到 32 位主算子（全零时取 1）；主算子与每张低半选票做内积奇偶，
+  得到 13 票，7 票及以上回答“是”。主算子只依赖高半、选票只依赖低半，两个位域不相交；
+  固定主算子后 13 票独立且各半，奇数票多数在组合上恰为 1/2。
 
 ## 算法选择与注册
 
@@ -104,8 +112,9 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
 - `tests/test_decider_algorithms.py` 验证注册表、算法确定性与上下文熵，并用固定样本
-  检查地占盾盘的转置/异或结构、裁判必为偶数图、大衍筮法的变数分布与阳爻奇偶，
-  以及 Obi 字母、Ifa 奥杜奇偶与 Eyeife 转 Ifa 的分支；`tests/test_selector.py`
+  检查地占盾盘的转置/异或结构、裁判必为偶数图、大衍筮法的变数分布与阳爻奇偶、
+  Obi 字母/Ifa 奥杜奇偶与 Eyeife 转 Ifa 分支，以及 `trial` 的位域拆分、逐位多数、
+  内积奇偶与 13 票阈值；`tests/test_selector.py`
   用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，
   避免统计型断言。
 

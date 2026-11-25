@@ -72,6 +72,163 @@ def test_algorithm_bits_are_derived_from_the_shared_context() -> None:
     assert len(first) == 16
 
 
+def test_algorithm_operators_are_derived_from_the_shared_context() -> None:
+    from nonebot_plugin_rawtell.protocol import (
+        derive_seed,
+        derive_algorithm_operators,
+    )
+
+    def derive(context: "DecisionContext") -> tuple[int, ...]:
+        return derive_algorithm_operators(
+            context,
+            name="trial",
+            version=1,
+            stage="operators",
+            count=13,
+        )
+
+    first = derive(_context(1))
+
+    assert first == derive(_context(1))
+    assert first != derive(_context(2))
+    assert len(first) == 13
+    assert all(0 <= operator < 1 << 64 for operator in first)
+    assert first[0] == derive_seed(
+        _context(1),
+        purpose="algorithm:trial:v1:operators:operator:1",
+    )
+
+
+def test_algorithm_operators_validate_stage_and_count() -> None:
+    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
+
+    with pytest.raises(ValueError, match="stage"):
+        derive_algorithm_operators(
+            _context(1),
+            name="trial",
+            version=1,
+            stage="",
+            count=1,
+        )
+
+    with pytest.raises(ValueError, match="non-negative"):
+        derive_algorithm_operators(
+            _context(1),
+            name="trial",
+            version=1,
+            stage="operators",
+            count=-1,
+        )
+
+
+def test_trial_splits_principal_share_and_ballot() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.trial import split_operator
+
+    operator = (0xDEADBEEF << 32) | 0x01234567
+
+    assert split_operator(operator) == (0xDEADBEEF, 0x01234567)
+
+    with pytest.raises(ValueError, match="64-bit"):
+        split_operator(1 << 64)
+
+
+def test_trial_principal_is_bitwise_majority_and_never_zero() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.trial import principal
+
+    shares = [0] * 13
+    for index in range(7):
+        shares[index] |= 1
+        shares[index] |= 1 << 31
+    for index in range(6):
+        shares[index] |= 1 << 1
+    for index in range(13):
+        shares[index] |= 1 << 2
+    operators = [(share << 32) | 0xFFFF_FFFF for share in shares]
+
+    assert principal(operators) == 1 | (1 << 2) | (1 << 31)
+    assert principal([0] * 13) == 1
+
+    with pytest.raises(ValueError, match="13 operators"):
+        principal([0] * 12)
+
+
+def test_trial_vote_is_inner_product_parity() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.trial import vote
+
+    assert vote(0b1, 0b0) == 0
+    assert vote(0b1, 0b1) == 1
+    assert vote(0b11, 0b01) == 1
+    assert vote(0b11, 0b11) == 0
+    assert vote(0b101, 0b111) == 0
+
+    with pytest.raises(ValueError, match="non-zero"):
+        vote(0, 1)
+
+
+def test_trial_verdict_is_a_thirteen_vote_majority() -> None:
+    from itertools import product
+
+    from nonebot_plugin_rawtell.decider_algorithms.trial import verdict
+
+    assert verdict([1] * 7 + [0] * 6) is True
+    assert verdict([1] * 6 + [0] * 7) is False
+    assert sum(verdict(votes) for votes in product((0, 1), repeat=13)) == 4096
+
+
+def test_trial_decide_uses_the_ballot_majority() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.trial import decide, principal
+
+    affirmative = [(1 << 32) | 1] * 7 + [(1 << 32) | 0] * 6
+    negative = [(1 << 32) | 1] * 6 + [(1 << 32) | 0] * 7
+
+    assert principal(affirmative) == 1
+    assert decide(affirmative) is True
+    assert principal(negative) == 1
+    assert decide(negative) is False
+
+
+def test_trial_calculate_matches_derived_operators() -> None:
+    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
+    from nonebot_plugin_rawtell.decider_algorithms.trial import decide, calculate
+
+    context = _context(1)
+    operators = derive_algorithm_operators(
+        context,
+        name="trial",
+        version=1,
+        stage="operators",
+        count=13,
+    )
+
+    assert calculate(context) is decide(operators)
+
+
+def test_trial_is_registered() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+
+    trial = {algorithm.name: algorithm for algorithm in ALGORITHMS}["trial"]
+
+    assert trial.version == 1
+    assert trial.weight == 1
+
+
+def test_trial_operator_purpose_is_separate_from_selector() -> None:
+    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
+    from nonebot_plugin_rawtell.selector import derive_operators
+
+    context = _context(1)
+
+    trial = derive_algorithm_operators(
+        context,
+        name="trial",
+        version=1,
+        stage="operators",
+        count=13,
+    )
+
+    assert trial != derive_operators(context)
+
+
 def test_dayan_change_removals_follow_canonical_counts() -> None:
     from nonebot_plugin_rawtell.decider_algorithms.dayan import (
         first_change_removal,
