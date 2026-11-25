@@ -71,13 +71,18 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `decider_algorithms/` 每个文件实现一个算法，导出 `ALGORITHM`；`__init__.py` 是显式
   注册表，不使用自动发现。新增算法需要同时改文件与注册表，保证打包与 review 可控。
 - `Algorithm` 元数据包含稳定的 `name`、整数 `version`、整数 `weight` 与纯函数
-  `calculate`。行为变化时递增 `version`，使派生种子随契约变化。
-- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 按权重用上下文派生种子选择算法；
-  也可填具体 `name` 固定算法。配置无效时入口记录 WARNING 并回退到 `random`。
+  `calculate`。行为变化时递增 `version`，使派生种子随契约变化。当前 `weight` 只作为
+  启用标记：`0` 表示禁用，正值不参与概率分配。
+- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 从 `DecisionContext` 派生 13 个
+  64 位算子；取第 `i` 个算子的第 `i` 位（MSB 起）填入 26 位 `omega` 的前半，取第
+  `14 - i` 个算子的倒数第 `i` 位填入后半；对 `omega` 做 BLAKE2b 哈希得到 `lambda`，
+  再以 `lambda % N` 选择算法。也可填具体 `name` 固定算法。配置无效时入口记录 WARNING
+  并回退到 `random`。
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
 - `tests/test_decider_algorithms.py` 验证注册表与算法确定性；`tests/test_selector.py`
-  用假算法验证固定/随机/禁用/重名规则，避免统计型断言。
+  用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，避免
+  统计型断言。
 
 ## 新增功能时的落点
 

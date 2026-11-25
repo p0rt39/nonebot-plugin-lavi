@@ -1,12 +1,18 @@
 """Select one decision algorithm for a :class:`DecisionContext`."""
 
-from random import Random
+import hashlib
 from collections.abc import Sequence
 
 from .protocol import Selector, Algorithm, DecisionContext, derive_seed
 from .decider_algorithms import ALGORITHMS
 
 RANDOM_SELECTION = "random"
+
+OPERATOR_COUNT = 13
+"""Number of context-derived operators used to build ``omega``."""
+
+OPERATOR_BITS = 64
+"""Width of one context-derived operator."""
 
 
 def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:
@@ -25,24 +31,73 @@ def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:
     return enabled
 
 
+def derive_operators(context: DecisionContext) -> tuple[int, ...]:
+    """Derive 13 independent 64-bit operators from the decision context."""
+    return tuple(
+        derive_seed(context, purpose=f"selector:operator:{index}")
+        for index in range(1, OPERATOR_COUNT + 1)
+    )
+
+
+def _msb_bit(value: int, position: int) -> int:
+    """Return the 1-based bit at ``position`` counted from the 64-bit MSB."""
+    return (value >> (OPERATOR_BITS - position)) & 1
+
+
+def _lsb_bit(value: int, position: int) -> int:
+    """Return the 1-based bit at ``position`` counted from the LSB."""
+    return (value >> (position - 1)) & 1
+
+
+def compose_omega(operators: Sequence[int]) -> int:
+    """Compose the 26-bit ``omega`` from 13 64-bit operators.
+
+    The upper 13 bits take operator ``i``'s ``i``-th bit from the MSB. The
+    lower 13 bits take operator ``14 - i``'s ``i``-th bit from the LSB, so the
+    second half reads the reverse diagonal.
+    """
+    if len(operators) != OPERATOR_COUNT:
+        raise ValueError(f"expected {OPERATOR_COUNT} operators")
+
+    omega = 0
+    for position in range(1, OPERATOR_COUNT + 1):
+        operator = operators[position - 1]
+        if not 0 <= operator < 1 << OPERATOR_BITS:
+            raise ValueError("operator must be a 64-bit unsigned integer")
+        omega |= _msb_bit(operator, position) << (2 * OPERATOR_COUNT - position)
+        reverse = operators[OPERATOR_COUNT - position]
+        omega |= _lsb_bit(reverse, position) << (position - 1)
+    return omega
+
+
+def hash_omega(omega: int) -> int:
+    """Hash the 26-bit ``omega`` into a 64-bit ``lambda``."""
+    if not 0 <= omega < 1 << (2 * OPERATOR_COUNT):
+        raise ValueError("omega must be a 26-bit unsigned integer")
+    digest = hashlib.blake2b(
+        omega.to_bytes(4, "big"),
+        digest_size=8,
+        person=b"rawtell",
+    )
+    return int.from_bytes(digest.digest(), "big")
+
+
+def derive_lambda(context: DecisionContext) -> int:
+    """Derive the selection value ``lambda`` from one decision context."""
+    return hash_omega(compose_omega(derive_operators(context)))
+
+
 def choose_algorithm(
     context: DecisionContext, algorithms: Sequence[Algorithm]
 ) -> Algorithm:
-    """Pick one algorithm by integer weight using the context-derived seed.
+    """Pick one algorithm by ``lambda % len(algorithms)``.
 
     ``algorithms`` must be non-empty and ordered; the caller is responsible for
-    filtering zero weights and sorting when reproducibility matters.
+    filtering disabled entries and sorting when reproducibility matters.
     """
-    total_weight = sum(algorithm.weight for algorithm in algorithms)
-    if total_weight <= 0:
-        raise ValueError("at least one algorithm must have a positive weight")
-
-    offset = Random(derive_seed(context, purpose="selector:v1")).randrange(total_weight)
-    for algorithm in algorithms:
-        offset -= algorithm.weight
-        if offset < 0:
-            return algorithm
-    raise AssertionError("unreachable")
+    if not algorithms:
+        raise ValueError("at least one algorithm is required")
+    return algorithms[derive_lambda(context) % len(algorithms)]
 
 
 def build_selector(

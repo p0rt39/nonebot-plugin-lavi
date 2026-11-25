@@ -12,7 +12,7 @@ Scope：`src/nonebot_plugin_rawtell/`（Python 包根）。先读根 `AGENTS.md`
   类型与种子派生。不得反向 import 插件入口或算法包。
 - `decision.py`：`/rawtell` 参数解析（单项问题/两个候选项）和选择器→计算器的编排；
   不依赖 NoneBot，也不内置占卜算法。
-- `selector.py`：算法注册表校验与固定/随机/加权选择策略；不执行算法、不采样熵。
+- `selector.py`：算法注册表校验与固定/随机选择策略；不执行算法、不采样熵。
 - `command.py`：`/rawtell` 处理函数，接收参数与已构建的选择器并返回回复文本；不得持有
   `Matcher` 或 import 插件入口。
 - `decider_algorithms/`：每个算法一个文件，导出 `ALGORITHM`；`__init__.py` 是显式注册表。

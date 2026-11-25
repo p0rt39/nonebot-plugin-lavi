@@ -79,23 +79,43 @@ def test_random_selector_calls_only_the_chosen_calculator() -> None:
     assert len(first_calls) + len(second_calls) == 1
 
 
-def test_choose_algorithm_uses_cumulative_weights(monkeypatch) -> None:
+def test_compose_omega_maps_forward_and_reverse_diagonals() -> None:
+    from nonebot_plugin_rawtell.selector import OPERATOR_COUNT, compose_omega
+
+    for omega_position in range(2 * OPERATOR_COUNT):
+        operators = [0] * OPERATOR_COUNT
+        if omega_position < OPERATOR_COUNT:
+            operator_index = omega_position + 1
+            operators[operator_index - 1] = 1 << (64 - operator_index)
+        else:
+            reverse_position = 2 * OPERATOR_COUNT - omega_position
+            operator_index = OPERATOR_COUNT + 1 - reverse_position
+            operators[operator_index - 1] = 1 << (reverse_position - 1)
+
+        assert compose_omega(operators) == 1 << (
+            2 * OPERATOR_COUNT - 1 - omega_position
+        )
+
+
+def test_derive_operators_are_deterministic_and_64_bit() -> None:
+    from nonebot_plugin_rawtell.selector import OPERATOR_COUNT, derive_operators
+
+    operators = derive_operators(_context())
+
+    assert len(operators) == OPERATOR_COUNT
+    assert all(0 <= operator < 1 << 64 for operator in operators)
+    assert operators == derive_operators(_context())
+
+
+def test_choose_algorithm_uses_lambda_modulo_algorithm_count(monkeypatch) -> None:
     import nonebot_plugin_rawtell.selector as selector_module
 
-    class FixedRandom:
-        def __init__(self, _seed: int) -> None:
-            pass
+    algorithms = tuple(
+        _algorithm(f"algorithm-{index}", 1, True)[0] for index in range(4)
+    )
+    monkeypatch.setattr(selector_module, "derive_lambda", lambda _: 7)
 
-        def randrange(self, total: int) -> int:
-            assert total == 3
-            return 2
-
-    first, _ = _algorithm("first", 1, True)
-    second, _ = _algorithm("second", 2, False)
-
-    monkeypatch.setattr(selector_module, "Random", FixedRandom)
-
-    assert selector_module.choose_algorithm(_context(), (first, second)) is second
+    assert selector_module.choose_algorithm(_context(), algorithms) is algorithms[3]
 
 
 def test_zero_weight_algorithm_is_disabled() -> None:
