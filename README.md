@@ -35,12 +35,50 @@ uv sync --all-groups
 
 所有配置位于 `.env` 中的 `LAVI__...` 作用域。
 
+### 基础配置
+
 | 配置项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
 | `LAVI__ALGORITHM` | `str` | `random` | 默认算法；`random` 为每次决策随机选择，也可填 `dayan`、`geomancy`、`obi-ifa` 或 `trial`。|
 | `LAVI__DETAILED` | `bool` | `false` | 详细模式：在简洁回复后追加算法算子数量与演算过程 |
 
 配置的算法名无效时，插件会记录 WARNING 并回退到 `random`。
+
+### 自定义文案
+
+回复文案位于 `LAVI__TEXT__...` 作用域：
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `LAVI__TEXT__HEADER` | `str` | `🔮 决断仪式：「{decider}」` | 简洁与详细回复的首行；必须包含 `{decider}`（算法显示名）。|
+| `LAVI__TEXT__RESULT` | `str` | `✨ 决断结果：「{answer}」` | 结果行；必须包含 `{answer}`。|
+| `LAVI__TEXT__OPERATOR_COUNT` | `str` | `📊 算子数量：{operator_count}` | 详细模式的算子数行；必须包含 `{operator_count}`。|
+| `LAVI__TEXT__STEPS_HEADER` | `str` | `📜 演算过程：` | 详细模式的步骤标题；设为空字符串可隐藏该行。|
+| `LAVI__TEXT__UNKNOWN_ALGORITHM` | `str` | `⚠️ 未知算法：「{requested}」` | 未知算法错误的标题行；必须包含 `{requested}`。|
+| `LAVI__TEXT__AVAILABLE_ALGORITHMS` | `str` | `可用算法：{available}；random（随机）` | 未知算法错误的可用列表行；必须包含 `{available}`。|
+| `LAVI__TEXT__UNAVAILABLE` | `str` | `决策算法暂时不可用，请稍后再试。` | 处理异常时的降级回复。|
+| `LAVI__TEXT__AFFIRMATIVE` | `str` | `是` | 是/否模式中的肯定回复。|
+| `LAVI__TEXT__NEGATIVE` | `str` | `否` | 是/否模式中的否定回复。|
+
+模板字段使用 Python 标准 `str.format` 语法：必填占位符必须出现，字面量花括号写成 `{{` 和 `}}`；不支持 `!r` 转换或 `:...` 格式说明符。
+
+若缺少必填占位符、使用不支持的占位符或花括号不配对，插件会拒绝加载。
+
+例如：
+
+```dotenv
+LAVI__TEXT__HEADER="🎴 神谕：「{decider}」"
+LAVI__TEXT__RESULT="🎯 结果：「{answer}」"
+LAVI__TEXT__AFFIRMATIVE="行"
+LAVI__TEXT__NEGATIVE="不行"
+```
+
+之后 `/lavi` 的默认回复会变成：
+
+```text
+🎴 神谕：「大衍」
+🎯 结果：「行」
+```
 
 ## 内置算法
 
@@ -53,18 +91,18 @@ uv sync --all-groups
 
 | 指令 | 权限 | 说明 |
 | :--- | :--- | :--- |
-| `/lavi` | 无 | 按配置算法回答“是”或“否” |
-| `/lavi 算法名` | 无 | 用指定算法回答“是”或“否” |
+| `/lavi` | 无 | 按配置算法给出肯定/否定回复（默认“是/否”） |
+| `/lavi 算法名` | 无 | 用指定算法给出肯定/否定回复（默认“是/否”） |
 | `/lavi 候选1 候选2` | 无 | 按配置算法从两个候选中选择一个 |
 | `/lavi 算法名 候选1 候选2` | 无 | 用指定算法从两个候选中选择一个 |
 
 参数按空白分隔后的字段数解释：
 
-- 0 个字段（`/lavi`）：按配置算法回答“是/否”。
+- 0 个字段（`/lavi`）：按配置算法给出肯定/否定回复（默认“是/否”）。
 - 1 个字段：视为算法名，未知名称会静默回退到配置算法。
 - 2 个字段：始终视为两个候选。
 - 3 个字段：视为“算法名 + 两个候选”；首个字段不是已知算法名时拒绝。
-- 4 个及以上字段：静默丢弃，按配置算法回答“是/否”。
+- 4 个及以上字段：静默丢弃，按配置算法给出肯定/否定回复（默认“是/否”）。
 
 在 1 或 3 字段形式中，命令参数优先于 `LAVI__ALGORITHM`。指定单次算法时，把算法 ID 放在最前，例如：
 
@@ -146,6 +184,7 @@ tests/
 ├── conftest.py              # NoneBot 初始化与数据目录隔离
 ├── fake.py                  # OneBot V11 假事件
 ├── test_command.py          # 命令参数分派与算法覆盖
+├── test_config.py           # 文案配置默认值与校验
 ├── test_decision.py         # 决策核心契约
 ├── test_decider_algorithms.py
 ├── test_render.py           # 回答与参数错误渲染

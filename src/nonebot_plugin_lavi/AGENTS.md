@@ -6,7 +6,8 @@ Scope：`src/nonebot_plugin_lavi/`（Python 包根）。先读根 `AGENTS.md`。
 
 - `__init__.py`：NoneBot 集成——`__plugin_meta__`、scoped config、插件数据目录、`/lavi`
   matcher 注册。命令与生命周期钩子只在这里注册，实现留在子模块。
-- `config.py`：`Config` 与 `ScopedConfig`（dotenv 前缀 `LAVI__`）。配置默认值**必须与
+- `config.py`：`Config`、`ScopedConfig` 与 `TextConfig`（dotenv 前缀 `LAVI__`，文案模板在
+  `LAVI__TEXT__...`）。模板的必填占位符由 Pydantic 校验。配置默认值**必须与
   `../../README.md` 配置表保持一致**——修改默认值的同一时间更新 README 表格。
 - `protocol.py`：跨子模块共享的领域模型、决策上下文、`Algorithm` 元数据（稳定 `name`
   与可选 `display_name`）、选择器/计算器类型、`Explanation`/`Decision` 结果、算子计量与
@@ -17,8 +18,9 @@ Scope：`src/nonebot_plugin_lavi/`（Python 包根）。先读根 `AGENTS.md`。
 - `selector.py`：算法注册表校验、可用算法枚举与固定/随机选择策略；不执行算法、不采样熵。
 - `command.py`：`/lavi` 处理函数，接收参数与默认选择器，按字段数决定是否构建单次算法
   选择器并返回回复文本；不得持有 `Matcher` 或 import 插件入口。
-- `render.py`：把决策答案与参数错误渲染为适配器无关的多行展示文本；简洁与详细回复都显示
-  算法显示名与结果行，详细模式空行后追加算子数量与演算步骤；不参与决策，也不采样熵。
+- `render.py`：把决策答案与参数错误渲染为适配器无关的多行展示文本；行模板来自
+  `TextConfig`，简洁与详细回复都显示算法显示名与结果行，详细模式空行后追加算子数量与
+  演算步骤；不参与决策，也不采样熵。
 - `decider_algorithms/`：每个算法一个文件，导出 `ALGORITHM`；`__init__.py` 是显式注册表。
   算法必须同步、纯函数化，只读 `DecisionContext`，不得访问 NoneBot、网络、文件或全局
   `random`。算法可提供 `explain(context)` 返回 `Explanation(answer, steps)`，并挂到

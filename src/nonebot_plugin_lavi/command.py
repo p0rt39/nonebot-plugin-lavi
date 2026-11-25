@@ -1,5 +1,6 @@
 """The /lavi command handler, independent of NoneBot matchers."""
 
+from .config import TextConfig
 from .render import render_answer, render_detailed, render_unknown_algorithm
 from .decision import decide, parse_invocation
 from .protocol import Selector, capture_context
@@ -12,8 +13,15 @@ def _available_choices() -> tuple[str, ...]:
     )
 
 
-def handle_lavi(arguments: str, *, selector: Selector, detailed: bool = False) -> str:
+def handle_lavi(
+    arguments: str,
+    *,
+    selector: Selector,
+    detailed: bool = False,
+    text: TextConfig | None = None,
+) -> str:
     """Resolve an optional per-command algorithm and render one decision."""
+    text = text or TextConfig()
     request = parse_invocation(arguments)
     if request.algorithm is not None:
         try:
@@ -23,6 +31,7 @@ def handle_lavi(arguments: str, *, selector: Selector, detailed: bool = False) -
                 return render_unknown_algorithm(
                     request.algorithm,
                     available=_available_choices(),
+                    text=text,
                 )
 
     decision = decide(
@@ -30,12 +39,14 @@ def handle_lavi(arguments: str, *, selector: Selector, detailed: bool = False) -
         context=capture_context(),
         selector=selector,
         trace=detailed,
+        options=(text.affirmative, text.negative),
     )
     if not detailed:
-        return render_answer(decision.answer, decider=decision.display_name)
+        return render_answer(decision.answer, decider=decision.display_name, text=text)
     return render_detailed(
         decision.answer,
         decider=decision.display_name,
         operator_count=decision.operator_count,
         steps=decision.steps,
+        text=text,
     )

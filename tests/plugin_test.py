@@ -218,3 +218,71 @@ async def test_lavi_three_arguments_reject_unknown_algorithm(app: App):
             bot=bot,
         )
         ctx.should_finished()
+
+
+async def test_lavi_uses_configured_text(app: App, monkeypatch):
+    from nonebot.adapters.onebot.v11 import Bot
+    from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
+
+    import nonebot_plugin_lavi as plugin
+
+    monkeypatch.setattr(
+        plugin.plugin_config.text,
+        "header",
+        "🎴 神谕：「{decider}」",
+    )
+    monkeypatch.setattr(
+        plugin.plugin_config.text,
+        "result",
+        "🎯 结果：「{answer}」",
+    )
+    monkeypatch.setattr(plugin.plugin_config.text, "affirmative", "行")
+    monkeypatch.setattr(
+        plugin,
+        "algorithm_selector",
+        lambda _context: _algorithm(result=True),
+    )
+    event = fake_private_message_event_v11(message="/lavi")
+
+    async with app.test_matcher(plugin.lavi) as ctx:
+        adapter = nonebot.get_adapter(OnebotV11Adapter)
+        bot = ctx.create_bot(base=Bot, adapter=adapter)
+        ctx.receive_event(bot, event)
+        ctx.should_call_send(
+            event,
+            "🎴 神谕：「探测」\n🎯 结果：「行」",
+            result=None,
+            bot=bot,
+        )
+        ctx.should_finished()
+
+
+async def test_lavi_unavailable_uses_configured_text(app: App, monkeypatch):
+    from nonebot.adapters.onebot.v11 import Bot
+    from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
+
+    import nonebot_plugin_lavi as plugin
+
+    monkeypatch.setattr(
+        plugin.plugin_config.text,
+        "unavailable",
+        "占卜服务暂时打烊。",
+    )
+
+    def fail(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(plugin, "handle_lavi", fail)
+    event = fake_private_message_event_v11(message="/lavi")
+
+    async with app.test_matcher(plugin.lavi) as ctx:
+        adapter = nonebot.get_adapter(OnebotV11Adapter)
+        bot = ctx.create_bot(base=Bot, adapter=adapter)
+        ctx.receive_event(bot, event)
+        ctx.should_call_send(
+            event,
+            "占卜服务暂时打烊。",
+            result=None,
+            bot=bot,
+        )
+        ctx.should_finished()

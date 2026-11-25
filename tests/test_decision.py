@@ -136,6 +136,26 @@ def test_three_field_invocation_keeps_two_candidates() -> None:
     assert parse_options(invocation.text) == ("红茶", "咖啡")
 
 
+def test_parse_options_uses_configured_reply_words() -> None:
+    from nonebot_plugin_lavi.decision import parse_options
+
+    assert parse_options("", options=("好", "不好")) == ("好", "不好")
+    assert parse_options("红茶 咖啡", options=("好", "不好")) == ("红茶", "咖啡")
+
+
+def test_decision_uses_configured_reply_words() -> None:
+    from nonebot_plugin_lavi.decision import decide
+
+    result = decide(
+        "",
+        context=_context(),
+        selector=lambda _: _algorithm(False),
+        options=("好", "不好"),
+    )
+
+    assert result.answer == "不好"
+
+
 def test_selector_picks_one_algorithm_for_the_shared_context() -> None:
     from nonebot_plugin_lavi.decision import decide
 

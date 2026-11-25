@@ -155,3 +155,47 @@ def test_four_or_more_arguments_keep_configured_behavior(monkeypatch) -> None:
     )
 
     assert reply == "🔮 决断仪式：「配置」\n✨ 决断结果：「是」"
+
+
+def test_custom_text_and_reply_words_are_used(monkeypatch) -> None:
+    import nonebot_plugin_lavi.command as command
+    from nonebot_plugin_lavi.config import TextConfig
+
+    monkeypatch.setattr(command, "capture_context", lambda: _context())
+    text = TextConfig(
+        header="🎴 神谕：「{decider}」",
+        result="🎯 结果：「{answer}」",
+        affirmative="行",
+        negative="不行",
+    )
+
+    reply = command.handle_lavi(
+        "",
+        selector=_configured_selector(True),
+        text=text,
+    )
+
+    assert reply == "🎴 神谕：「配置」\n🎯 结果：「行」"
+
+
+def test_custom_unknown_algorithm_text_is_used(monkeypatch) -> None:
+    import nonebot_plugin_lavi.command as command
+    from nonebot_plugin_lavi.config import TextConfig
+
+    monkeypatch.setattr(command, "capture_context", _fail_context)
+    text = TextConfig(
+        unknown_algorithm="❌ 没有「{requested}」",
+        available_algorithms="可选：{available}；random（随机）",
+    )
+
+    reply = command.handle_lavi(
+        "missing 红茶 咖啡",
+        selector=_unused_selector,
+        text=text,
+    )
+
+    assert reply == (
+        "❌ 没有「missing」\n"
+        "可选：dayan（大衍）、geomancy（地占）、obi-ifa（宝螺）、"
+        "trial（裁判）；random（随机）"
+    )
