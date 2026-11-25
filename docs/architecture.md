@@ -43,7 +43,8 @@ tests/
 
 ## 二元决策骨架
 
-`protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层尚未接入。
+`protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层通过
+`command.handle_rawtell()` 接入。
 
 ```text
 arguments ──parse_options──> (affirmative, negative)
@@ -59,7 +60,8 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `capture_context()` 只采样一次 UTC 时间、进程 `pid` 与三个独立的 64 位 `nonce`，
   封装为 `DecisionContext`。选择器与算法接收同一个对象，看不到命令原文，也不能各自重新采样。
 - `derive_seed(context, purpose=...)` 用 BLAKE2b 把上下文哈希为 64 位种子；
-  选择器用 `selector:v1`，每个算法用 `algorithm:<name>:v<version>`，避免两者相关性。
+  选择器用 `selector:operator:<1..13>`，每个算法用 `algorithm:<name>:v<version>`，
+  避免两者相关性。
 - `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，

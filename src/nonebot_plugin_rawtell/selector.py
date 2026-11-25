@@ -9,10 +9,7 @@ from .decider_algorithms import ALGORITHMS
 RANDOM_SELECTION = "random"
 
 OPERATOR_COUNT = 13
-"""Number of context-derived operators used to build ``omega``."""
-
 OPERATOR_BITS = 64
-"""Width of one context-derived operator."""
 
 
 def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:

@@ -171,13 +171,13 @@ def test_random_name_is_reserved() -> None:
 
 
 def test_selector_and_algorithm_seeds_are_independent() -> None:
-    from nonebot_plugin_rawtell.protocol import derive_seed
+    from nonebot_plugin_rawtell.protocol import derive_seed, derive_algorithm_seed
 
     context = _context()
+    selector_seed = derive_seed(context, purpose="selector:operator:1")
+    algorithm_seed = derive_algorithm_seed(context, name="coin", version=1)
 
-    assert derive_seed(context, purpose="selector:v1") != derive_seed(
-        context, purpose="algorithm:coin:v1"
-    )
+    assert selector_seed != algorithm_seed
 
 
 def test_default_selector_uses_the_real_registry() -> None:

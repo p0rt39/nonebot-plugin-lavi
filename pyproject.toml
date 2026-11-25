@@ -48,7 +48,6 @@ build-backend = "uv_build"
 source-exclude = ["src/**/AGENTS.md"]
 
 [tool.coverage.report]
-# Add `fail_under` once the plugin has behavior worth covering end to end.
 exclude_lines = [
   "raise NotImplementedError",
   "if TYPE_CHECKING:",
@@ -77,12 +76,12 @@ disableBytesTypePromotions = true
 
 [tool.pytest]
 addopts = [
-  "--import-mode=prepend", # 导入模式
-  "--strict-markers",      # 严格标记模式
-  "--tb=short",            # 简短的错误回溯
-  "-ra",                   # 显示所有测试结果摘要
-  "-s",                    # 显示打印信息
-  "-v",                    # 详细输出
+  "--import-mode=prepend",
+  "--strict-markers",
+  "--tb=short",
+  "-ra",
+  "-s",
+  "-v",
 ]
 pythonpath = ["src"]
 asyncio_mode = "auto"
