@@ -1,10 +1,4 @@
-"""rAwTell — NoneBot2 plugin entry point.
-
-Only the NoneBot integration lives here: plugin metadata, scoped config access,
-the plugin data directory and matcher registration. Feature code belongs in
-submodules next to this file, and every submodule must stay importable without
-an initialized driver.
-"""
+"""NoneBot integration for rAwTell."""
 
 from pathlib import Path
 

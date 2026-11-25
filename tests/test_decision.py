@@ -18,9 +18,8 @@ def _context(pid: int = 10) -> "DecisionContext":
     return DecisionContext(timestamp=_TIMESTAMP, pid=pid)
 
 
-def _constant(value: bool, calls: list["DecisionContext"]) -> "Calculator":
-    def calculator(context: "DecisionContext") -> bool:
-        calls.append(context)
+def _constant(value: bool) -> "Calculator":
+    def calculator(_: "DecisionContext") -> bool:
         return value
 
     return calculator
@@ -35,9 +34,7 @@ def test_yes_no_question_returns_corresponding_reply(
 ) -> None:
     from nonebot_plugin_rawtell.decision import decide
 
-    result = decide(
-        arguments, context=_context(), selector=lambda _: _constant(value, [])
-    )
+    result = decide(arguments, context=_context(), selector=lambda _: _constant(value))
 
     assert result == expected
 
@@ -48,8 +45,8 @@ def test_two_candidates_are_replied_verbatim() -> None:
     context = _context()
     arguments = "  Earl-Grey　咖啡！  "
 
-    yes = decide(arguments, context=context, selector=lambda _: _constant(True, []))
-    no = decide(arguments, context=context, selector=lambda _: _constant(False, []))
+    yes = decide(arguments, context=context, selector=lambda _: _constant(True))
+    no = decide(arguments, context=context, selector=lambda _: _constant(False))
 
     assert yes == "Earl-Grey"
     assert no == "咖啡！"
@@ -61,8 +58,8 @@ def test_repeated_candidates_stay_in_two_option_mode() -> None:
     context = _context()
     arguments = "茶\t茶"
 
-    yes = decide(arguments, context=context, selector=lambda _: _constant(True, []))
-    no = decide(arguments, context=context, selector=lambda _: _constant(False, []))
+    yes = decide(arguments, context=context, selector=lambda _: _constant(True))
+    no = decide(arguments, context=context, selector=lambda _: _constant(False))
 
     assert yes == "茶"
     assert no == "茶"
@@ -111,8 +108,10 @@ def test_capture_context_samples_process_and_utc_time() -> None:
 
     assert context.pid == os.getpid()
     assert context.timestamp.utcoffset() == timedelta(0)
-    assert 0 <= context.nonce < 1 << 64
-    assert context.monotonic_ns >= 0
+    assert all(
+        0 <= nonce < 1 << 64
+        for nonce in (context.nonce1, context.nonce2, context.nonce3)
+    )
 
 
 def test_calculator_error_propagates() -> None:

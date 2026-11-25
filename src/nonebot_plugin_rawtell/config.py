@@ -4,11 +4,7 @@ from pydantic import BaseModel
 
 
 class ScopedConfig(BaseModel):
-    """rAwTell settings, scoped under ``RAWTELL__`` in dotenv.
-
-    Add one field per user-visible setting, with a Pydantic validation bound
-    where the value has a meaningful range.
-    """
+    """Settings under the ``RAWTELL__`` dotenv scope."""
 
     algorithm: str = "random"
     """Registered algorithm name, or ``"random"`` to choose per decision."""

@@ -43,7 +43,8 @@ tests/
 
 ## 二元决策骨架
 
-`protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层尚未接入。
+`protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层通过
+`command.handle_rawtell()` 接入。
 
 ```text
 arguments ──parse_options──> (affirmative, negative)
@@ -56,11 +57,11 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
                                    result: affirmative / negative
 ```
 
-- `capture_context()` 只采样一次 UTC 时间、进程 `pid`、64 位 `nonce` 与
-  `perf_counter_ns()`，封装为 `DecisionContext`。选择器与算法接收同一个对象，
-  看不到命令原文，也不能各自重新采样。
+- `capture_context()` 只采样一次 UTC 时间、进程 `pid` 与三个独立的 64 位 `nonce`，
+  封装为 `DecisionContext`。选择器与算法接收同一个对象，看不到命令原文，也不能各自重新采样。
 - `derive_seed(context, purpose=...)` 用 BLAKE2b 把上下文哈希为 64 位种子；
-  选择器用 `selector:v1`，每个算法用 `algorithm:<name>:v<version>`，避免两者相关性。
+  选择器用 `selector:operator:<1..13>`，每个算法用 `algorithm:<name>:v<version>`，
+  避免两者相关性。
 - `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
@@ -72,13 +73,18 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `decider_algorithms/` 每个文件实现一个算法，导出 `ALGORITHM`；`__init__.py` 是显式
   注册表，不使用自动发现。新增算法需要同时改文件与注册表，保证打包与 review 可控。
 - `Algorithm` 元数据包含稳定的 `name`、整数 `version`、整数 `weight` 与纯函数
-  `calculate`。行为变化时递增 `version`，使派生种子随契约变化。
-- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 按权重用上下文派生种子选择算法；
-  也可填具体 `name` 固定算法。配置无效时入口记录 WARNING 并回退到 `random`。
+  `calculate`。行为变化时递增 `version`，使派生种子随契约变化。当前 `weight` 只作为
+  启用标记：`0` 表示禁用，正值不参与概率分配。
+- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 从 `DecisionContext` 派生 13 个
+  64 位算子；取第 `i` 个算子的第 `i` 位（MSB 起）填入 26 位 `omega` 的前半，取第
+  `14 - i` 个算子的倒数第 `i` 位填入后半；对 `omega` 做 BLAKE2b 哈希得到 `lambda`，
+  再以 `lambda % N` 选择算法。也可填具体 `name` 固定算法。配置无效时入口记录 WARNING
+  并回退到 `random`。
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
 - `tests/test_decider_algorithms.py` 验证注册表与算法确定性；`tests/test_selector.py`
-  用假算法验证固定/随机/禁用/重名规则，避免统计型断言。
+  用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，避免
+  统计型断言。
 
 ## 新增功能时的落点
 

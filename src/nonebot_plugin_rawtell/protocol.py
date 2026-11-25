@@ -1,12 +1,6 @@
-"""Data models shared across rAwTell submodules.
-
-Keep contracts here rather than passing ad-hoc dicts between submodules. Add a
-Pydantic model per cross-module payload (config-independent), and keep
-timestamps timezone-aware UTC.
-"""
+"""Cross-module data models and seed derivation for rAwTell."""
 
 import os
-import time
 import hashlib
 import secrets
 from typing import TypeAlias
@@ -21,15 +15,16 @@ class DecisionContext(BaseModel):
     """One sampling of runtime state shared by a selector and its calculator.
 
     ``timestamp`` is timezone-aware UTC, ``pid`` is the process running the
-    plugin, and ``nonce``/``monotonic_ns`` provide fresh per-decision entropy.
-    Both layers receive this exact object, so neither captures its own sample
-    and the command text never reaches them.
+    plugin, and ``nonce1``/``nonce2``/``nonce3`` are three independent 64-bit
+    CSPRNG samples. Both layers receive this exact object, so neither captures
+    its own sample and the command text never reaches them.
     """
 
     timestamp: datetime
     pid: int
-    nonce: int = Field(default=0, ge=0, lt=1 << 64)
-    monotonic_ns: int = 0
+    nonce1: int = Field(default=0, ge=0, lt=1 << 64)
+    nonce2: int = Field(default=0, ge=0, lt=1 << 64)
+    nonce3: int = Field(default=0, ge=0, lt=1 << 64)
 
 
 Calculator: TypeAlias = Callable[[DecisionContext], bool]
@@ -64,12 +59,13 @@ class Algorithm:
 
 
 def capture_context() -> DecisionContext:
-    """Sample UTC time, process id and fresh entropy exactly once each."""
+    """Sample UTC time, process id and three fresh 64-bit nonces exactly once."""
     return DecisionContext(
         timestamp=datetime.now(timezone.utc),
         pid=os.getpid(),
-        nonce=secrets.randbits(64),
-        monotonic_ns=time.perf_counter_ns(),
+        nonce1=secrets.randbits(64),
+        nonce2=secrets.randbits(64),
+        nonce3=secrets.randbits(64),
     )
 
 
@@ -84,8 +80,9 @@ def derive_seed(context: DecisionContext, *, purpose: str) -> int:
             purpose,
             context.timestamp.isoformat(),
             str(context.pid),
-            str(context.nonce),
-            str(context.monotonic_ns),
+            str(context.nonce1),
+            str(context.nonce2),
+            str(context.nonce3),
         )
     )
     digest = hashlib.blake2b(material.encode(), digest_size=8, person=b"rawtell")

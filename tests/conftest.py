@@ -34,9 +34,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]):
 
 @pytest.fixture(scope="session", autouse=True)
 async def after_nonebot_init(after_nonebot_init: None):
-    # 加载适配器
     driver = nonebot.get_driver()
     driver.register_adapter(OnebotV11Adapter)
 
-    # 加载插件（插件列表来自 pyproject.toml 的 [tool.nonebot]）
     nonebot.load_from_toml("pyproject.toml")

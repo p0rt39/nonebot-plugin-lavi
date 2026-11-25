@@ -1,9 +1,4 @@
-"""Reduce ``/rawtell`` arguments to one of two replies.
-
-This module holds no NoneBot objects and no built-in algorithm: callers inject a
-:data:`~nonebot_plugin_rawtell.protocol.Selector`, which picks a calculator for
-the shared :class:`~nonebot_plugin_rawtell.protocol.DecisionContext`.
-"""
+"""Parse ``/rawtell`` arguments and orchestrate one decision."""
 
 from .protocol import Selector, DecisionContext
 

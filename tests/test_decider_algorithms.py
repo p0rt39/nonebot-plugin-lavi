@@ -15,8 +15,9 @@ def _context(nonce: int) -> "DecisionContext":
     return DecisionContext(
         timestamp=_TIMESTAMP,
         pid=10,
-        nonce=nonce,
-        monotonic_ns=123,
+        nonce1=nonce,
+        nonce2=nonce + 1,
+        nonce3=nonce + 2,
     )
 
 
