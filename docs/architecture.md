@@ -56,9 +56,8 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
                                    result: affirmative / negative
 ```
 
-- `capture_context()` 只采样一次 UTC 时间、进程 `pid`、64 位 `nonce` 与
-  `perf_counter_ns()`，封装为 `DecisionContext`。选择器与算法接收同一个对象，
-  看不到命令原文，也不能各自重新采样。
+- `capture_context()` 只采样一次 UTC 时间、进程 `pid` 与三个独立的 64 位 `nonce`，
+  封装为 `DecisionContext`。选择器与算法接收同一个对象，看不到命令原文，也不能各自重新采样。
 - `derive_seed(context, purpose=...)` 用 BLAKE2b 把上下文哈希为 64 位种子；
   选择器用 `selector:v1`，每个算法用 `algorithm:<name>:v<version>`，避免两者相关性。
 - `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。

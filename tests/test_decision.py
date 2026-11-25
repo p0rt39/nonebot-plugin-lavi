@@ -111,8 +111,10 @@ def test_capture_context_samples_process_and_utc_time() -> None:
 
     assert context.pid == os.getpid()
     assert context.timestamp.utcoffset() == timedelta(0)
-    assert 0 <= context.nonce < 1 << 64
-    assert context.monotonic_ns >= 0
+    assert all(
+        0 <= nonce < 1 << 64
+        for nonce in (context.nonce1, context.nonce2, context.nonce3)
+    )
 
 
 def test_calculator_error_propagates() -> None:
