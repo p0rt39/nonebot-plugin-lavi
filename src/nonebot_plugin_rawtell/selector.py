@@ -16,7 +16,17 @@ from .decider_algorithms import ALGORITHMS
 RANDOM_SELECTION = "random"
 
 
-def _enabled(algorithms: Sequence[Algorithm]) -> tuple[Algorithm, ...]:
+class UnknownAlgorithmError(ValueError):
+    """The requested name is not an enabled algorithm in the registry."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"unknown algorithm: {name!r}")
+        self.name = name
+
+
+def available_algorithms(
+    algorithms: Sequence[Algorithm] = ALGORITHMS,
+) -> tuple[Algorithm, ...]:
     """Validate the registry and return enabled algorithms in stable order."""
     names = [algorithm.name for algorithm in algorithms]
     if len(names) != len(set(names)):
@@ -106,8 +116,12 @@ def build_selector(
     name: str = RANDOM_SELECTION,
     algorithms: Sequence[Algorithm] = ALGORITHMS,
 ) -> Selector:
-    """Build a selector for a configured name or per-decision random choice."""
-    enabled = _enabled(algorithms)
+    """Build a selector for a configured name or per-decision random choice.
+
+    ``name`` may be ``"random"`` or an enabled algorithm's stable name.
+    Raises :class:`UnknownAlgorithmError` when it is neither.
+    """
+    enabled = available_algorithms(algorithms)
 
     if name == RANDOM_SELECTION:
         return lambda context: choose_algorithm(context, enabled)
@@ -117,4 +131,4 @@ def build_selector(
             chosen = algorithm
             return lambda _context: chosen
 
-    raise ValueError(f"unknown algorithm: {name!r}")
+    raise UnknownAlgorithmError(name)

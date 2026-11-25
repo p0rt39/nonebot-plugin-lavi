@@ -94,6 +94,48 @@ def test_repeated_candidates_stay_in_two_option_mode() -> None:
     assert no.answer == "茶"
 
 
+@pytest.mark.parametrize(
+    ("arguments", "algorithm", "text", "require_algorithm"),
+    [
+        ("", None, "", False),
+        ("   ", None, "   ", False),
+        ("trial", "trial", "", False),
+        ("红茶 咖啡", None, "红茶 咖啡", False),
+        ("trial 红茶 咖啡", "trial", "红茶 咖啡", True),
+        ("红茶 咖啡 加奶 少糖", None, "红茶 咖啡 加奶 少糖", False),
+    ],
+)
+def test_parse_invocation_splits_by_field_count(
+    arguments: str,
+    algorithm: str | None,
+    text: str,
+    require_algorithm: bool,
+) -> None:
+    from nonebot_plugin_rawtell.decision import parse_invocation
+
+    invocation = parse_invocation(arguments)
+
+    assert invocation.algorithm == algorithm
+    assert invocation.text == text
+    assert invocation.require_algorithm is require_algorithm
+
+
+def test_single_field_invocation_keeps_yes_no_options() -> None:
+    from nonebot_plugin_rawtell.decision import parse_options, parse_invocation
+
+    invocation = parse_invocation("trial")
+
+    assert parse_options(invocation.text) == ("是", "否")
+
+
+def test_three_field_invocation_keeps_two_candidates() -> None:
+    from nonebot_plugin_rawtell.decision import parse_options, parse_invocation
+
+    invocation = parse_invocation("trial 红茶 咖啡")
+
+    assert parse_options(invocation.text) == ("红茶", "咖啡")
+
+
 def test_selector_picks_one_algorithm_for_the_shared_context() -> None:
     from nonebot_plugin_rawtell.decision import decide
 

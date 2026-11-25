@@ -18,7 +18,12 @@ import nonebot_plugin_localstore as store
 __plugin_meta__ = PluginMetadata(
     name="rAwTell",
     description="rAwTell — a NoneBot2 plugin for binary decisions",
-    usage=("/rawtell — 回答“是”或“否”\n/rawtell 选项A 选项B — 在两个候选中选择一个"),
+    usage=(
+        "/rawtell — 回答“是”或“否”\n"
+        "/rawtell 算法名 — 用指定算法回答“是”或“否”\n"
+        "/rawtell 选项A 选项B — 在两个候选中选择一个\n"
+        "/rawtell 算法名 选项A 选项B — 用指定算法在两个候选中选择一个"
+    ),
     type="application",
     homepage="https://github.com/p0rt39/nonebot-plugin-rawtell",
     config=Config,

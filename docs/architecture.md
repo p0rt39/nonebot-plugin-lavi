@@ -23,9 +23,10 @@ src/nonebot_plugin_rawtell/
 tests/
 ├── conftest.py              # NoneBot 初始化、适配器注册、数据目录隔离
 ├── fake.py                  # OneBot V11 假事件构造
+├── test_command.py          # 命令参数分派与算法覆盖
 ├── test_decision.py         # 二元决策核心契约
 ├── test_decider_algorithms.py
-├── test_render.py           # 回答单行渲染
+├── test_render.py           # 回答与参数错误渲染
 ├── test_selector.py
 └── plugin_test.py           # 插件加载与命令交互测试
 ```
@@ -40,7 +41,7 @@ tests/
 - `require("nonebot_plugin_localstore")` 后用 `store.get_plugin_data_dir()` 取得 `data_dir`。
 - 读取 `get_plugin_config(Config).rawtell` 得到 `plugin_config`。
 - 用 `build_selector()` 构建一次算法选择器；配置的算法名无效时记录 WARNING 并回退到
-  `random`，保证插件仍可加载。
+  `random`，保证插件仍可加载。命令层可在单次调用中按参数临时构建选择器，覆盖该默认值。
 - 注册 `/rawtell` matcher，并调用 `command.handle_rawtell()`；处理函数不持有 `Matcher`，
   返回的文本已经过 `render.render_answer()` 渲染。
 
@@ -52,7 +53,11 @@ tests/
 `command.handle_rawtell()` 接入。
 
 ```text
-arguments ──parse_options──> (affirmative, negative)
+arguments ──parse_invocation──> (algorithm?, text)
+                                   │
+              algorithm? ──build_selector(name)──> per-command selector
+                                   │
+text ──parse_options──> (affirmative, negative)
                                    │
 capture_context() ──> DecisionContext ──selector──> Algorithm
                                                        │
@@ -80,6 +85,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   重复派生。两种路径都在 `count_operators()` 内执行，记录算法实际派生的 64 位算子数，
   产出 `Decision(answer, algorithm, display_name, operator_count, steps)`。该计数不含
   选择算法本身使用的算子。
+- `parse_invocation()` 按空白分隔后的字段数分派：1 个字段视为算法名，2 个字段保持两个
+  候选的原解析，3 个字段视为“算法名 + 两个候选”，0 个或 4 个及以上保持原逻辑。命令层为
+  1 字段中的有效算法名构建固定选择器，未知名称静默沿用配置选择器；3 字段中的未知名称
+  不推演，直接渲染可用算法列表并中止。`random` 也是合法选择值，表示随机选择。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
   大小写与标点保留。
@@ -138,6 +147,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   `14 - i` 个算子的倒数第 `i` 位填入后半；对 `omega` 做 BLAKE2b 哈希得到 `lambda`，
   再以 `lambda % N` 选择算法。也可填具体 `name` 固定算法。配置无效时入口记录 WARNING
   并回退到 `random`。
+- `/rawtell` 在 1 个或 3 个字段时把首字段交给 `build_selector(name=...)`，为本次决策
+  覆盖配置选择器；`random` 也可用。1 字段未知时命令层静默沿用配置选择器，3 字段未知时
+  `UnknownAlgorithmError` 转为可用算法列表并中止。`available_algorithms()` 负责注册表
+  校验、过滤零权重并按 `name` 排序，供命令层列出可选项。
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
 - `tests/test_decider_algorithms.py` 验证注册表、算法确定性与上下文熵，并用固定样本
@@ -145,7 +158,8 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   Obi 字母/Ifa 奥杜奇偶与 Eyeife 转 Ifa 分支，以及 `trial` 的位域拆分、逐位多数、
   内积奇偶与 13 票阈值；`tests/test_selector.py`
   用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，
-  避免统计型断言。
+  避免统计型断言；`tests/test_command.py` 验证 1/2/3/4+ 字段分派、未知算法回退或中止、
+  以及命令参数对默认选择器的覆盖。
 
 ## 新增功能时的落点
 

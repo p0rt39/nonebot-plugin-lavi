@@ -1,16 +1,34 @@
 """The /rawtell command handler, independent of NoneBot matchers."""
 
-from .render import render_answer, render_detailed
-from .decision import decide
+from .render import render_answer, render_detailed, render_unknown_algorithm
+from .decision import decide, parse_invocation
 from .protocol import Selector, capture_context
+from .selector import UnknownAlgorithmError, build_selector, available_algorithms
+
+
+def _available_choices() -> tuple[str, ...]:
+    return tuple(
+        f"{algorithm.name}（{algorithm.label}）" for algorithm in available_algorithms()
+    )
 
 
 def handle_rawtell(
     arguments: str, *, selector: Selector, detailed: bool = False
 ) -> str:
-    """Capture one context and return the rendered reply for the arguments."""
+    """Resolve an optional per-command algorithm and render one decision."""
+    request = parse_invocation(arguments)
+    if request.algorithm is not None:
+        try:
+            selector = build_selector(name=request.algorithm)
+        except UnknownAlgorithmError:
+            if request.require_algorithm:
+                return render_unknown_algorithm(
+                    request.algorithm,
+                    available=_available_choices(),
+                )
+
     decision = decide(
-        arguments,
+        request.text,
         context=capture_context(),
         selector=selector,
         trace=detailed,
