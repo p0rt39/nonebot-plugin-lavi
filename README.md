@@ -11,7 +11,8 @@
 
 - `/rawtell` 命令：回答“是/否”，或从两个空白分隔的候选项中选一个。
 - 不依赖 NoneBot 的决策核心：参数解析、共享决策上下文、选择器/计算器编排。
-- 可插拔算法：`decider_algorithms/` 下每个算法一个文件，内置 `coin` 与 `dice`。
+- 可插拔算法：`decider_algorithms/` 下每个算法一个文件，内置 `geomancy`（地占盾盘）与
+  `obi-ifa`（Obi 宝螺 / Ifa 奥杜）。
 - 算法选择策略：默认每次随机，也可通过 `RAWTELL__ALGORITHM` 固定算法。
 - 分层 `AGENTS.md` 规则文件与 `docs/` 描述性参考。
 - ruff、BasedPyright、pytest/nonebug、prek 的检查链。
@@ -43,7 +44,20 @@ uv sync --all-groups
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `coin` 或 `dice` |
+| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `geomancy` 或 `obi-ifa` |
+
+## 内置算法
+
+- `geomancy`：以 16 个由决策上下文直接派生的爻位起四母图，按地占加法（逐行异或）
+  推导四女、四侄、左右见证与裁判。裁判必然是偶数图；按传统简易是非读法，稳定图回答
+  “是”，流动图回答“否”。
+- `obi-ifa`：先掷四枚宝螺得到 Obi 字母。Alafia（4 枚开口）为肯定，Etawa（3 枚开口）
+  为条件性肯定，Okana（1 枚）与 Oyekun（0 枚）为否定；Eyeife（2 枚开口、2 枚闭合）是
+  平衡之象，此时再掷八枚宝螺得到 Ifa 奥杜，以奥杜中单爻数量的奇偶作最终回答。
+
+两个算法都是对传统占卜结构的程序化模拟，用于决策娱乐，不构成宗教实践建议。每个爻位/
+宝螺位都从 `DecisionContext` 单独派生的 BLAKE2b 算子取最高位，与选择器使用同一类位级
+采样方式，但 purpose 域与算法身份绑定，互不相关。
 
 ## 命令
 
@@ -80,14 +94,14 @@ prek run --all-files
 src/nonebot_plugin_rawtell/
 ├── __init__.py              # 插件入口、__plugin_meta__、配置、matcher 注册
 ├── config.py                # RAWTELL__ 配置模型
-├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型
+├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型、种子与位派生
 ├── decision.py              # 参数解析与 decide() 编排
 ├── selector.py              # 算法选择策略与注册表校验
 ├── command.py               # /rawtell 处理函数
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
-    ├── coin.py
-    └── dice.py
+    ├── geomancy.py          # 地占盾盘算法
+    └── obi_ifa.py           # Obi / Ifa 宝螺算法
 tests/
 ├── conftest.py              # NoneBot 初始化与数据目录隔离
 ├── fake.py                  # OneBot V11 假事件

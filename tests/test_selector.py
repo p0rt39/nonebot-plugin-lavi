@@ -175,7 +175,7 @@ def test_selector_and_algorithm_seeds_are_independent() -> None:
 
     context = _context()
     selector_seed = derive_seed(context, purpose="selector:operator:1")
-    algorithm_seed = derive_algorithm_seed(context, name="coin", version=1)
+    algorithm_seed = derive_algorithm_seed(context, name="geomancy", version=1)
 
     assert selector_seed != algorithm_seed
 

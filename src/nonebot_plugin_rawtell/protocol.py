@@ -1,4 +1,4 @@
-"""Cross-module data models and seed derivation for rAwTell."""
+"""Cross-module data models, seed derivation and bit derivation for rAwTell."""
 
 import os
 import hashlib
@@ -89,6 +89,45 @@ def derive_seed(context: DecisionContext, *, purpose: str) -> int:
     return int.from_bytes(digest.digest(), "big")
 
 
+def _algorithm_purpose(name: str, version: int) -> str:
+    return f"algorithm:{name}:v{version}"
+
+
 def derive_algorithm_seed(context: DecisionContext, *, name: str, version: int) -> int:
     """Derive the seed for one algorithm, separated by its stable identity."""
-    return derive_seed(context, purpose=f"algorithm:{name}:v{version}")
+    return derive_seed(context, purpose=_algorithm_purpose(name, version))
+
+
+def derive_bits(
+    context: DecisionContext, *, purpose: str, count: int
+) -> tuple[int, ...]:
+    """Derive ``count`` independent bits for ``purpose``.
+
+    Each bit is the most significant bit of its own BLAKE2b operator, so the
+    sampled context data participates directly in the computation instead of
+    seeding a separate PRNG. Separate operators keep the marks independent.
+    """
+    if count < 0:
+        raise ValueError("count must be non-negative")
+    return tuple(
+        (derive_seed(context, purpose=f"{purpose}:operator:{index}") >> 63) & 1
+        for index in range(1, count + 1)
+    )
+
+
+def derive_algorithm_bits(
+    context: DecisionContext,
+    *,
+    name: str,
+    version: int,
+    stage: str,
+    count: int,
+) -> tuple[int, ...]:
+    """Derive independent bits for one stage of a named algorithm version."""
+    if not stage:
+        raise ValueError("stage must be non-empty")
+    return derive_bits(
+        context,
+        purpose=f"{_algorithm_purpose(name, version)}:{stage}",
+        count=count,
+    )

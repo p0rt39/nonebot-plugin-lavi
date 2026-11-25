@@ -1,11 +1,11 @@
 """Explicit registry of decision algorithms."""
 
-from . import coin, dice
+from . import obi_ifa, geomancy
 from ..protocol import Algorithm
 
 ALGORITHMS: tuple[Algorithm, ...] = (
-    coin.ALGORITHM,
-    dice.ALGORITHM,
+    geomancy.ALGORITHM,
+    obi_ifa.ALGORITHM,
 )
 
 __all__ = ["ALGORITHMS"]

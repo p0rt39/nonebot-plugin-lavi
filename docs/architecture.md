@@ -9,14 +9,14 @@
 src/nonebot_plugin_rawtell/
 ├── __init__.py              # NoneBot 集成：__plugin_meta__、配置、data_dir、matcher 注册
 ├── config.py                # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
-├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型
+├── protocol.py              # 决策上下文、Algorithm、选择器/计算器类型、种子与位派生
 ├── decision.py              # 参数解析与选择器→计算器编排（无 NoneBot 依赖）
 ├── selector.py              # 算法注册表校验与选择策略
 ├── command.py               # /rawtell 处理函数（不持有 Matcher）
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
-    ├── coin.py              # 硬币算法
-    └── dice.py              # 骰子算法
+    ├── geomancy.py          # 地占盾盘算法
+    └── obi_ifa.py           # Obi / Ifa 宝螺算法
 tests/
 ├── conftest.py              # NoneBot 初始化、适配器注册、数据目录隔离
 ├── fake.py                  # OneBot V11 假事件构造
@@ -60,13 +60,28 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `capture_context()` 只采样一次 UTC 时间、进程 `pid` 与三个独立的 64 位 `nonce`，
   封装为 `DecisionContext`。选择器与算法接收同一个对象，看不到命令原文，也不能各自重新采样。
 - `derive_seed(context, purpose=...)` 用 BLAKE2b 把上下文哈希为 64 位种子；
-  选择器用 `selector:operator:<1..13>`，每个算法用 `algorithm:<name>:v<version>`，
-  避免两者相关性。
+  选择器用 `selector:operator:<1..13>`。算法通过 `derive_algorithm_bits(...)` 以
+  `algorithm:<name>:v<version>:<stage>:operator:<i>` 为每个爻位/宝螺位单独派生 64 位
+  算子并取最高位，使采样数据直接参与运算，且与选择器的 purpose 域分离。
 - `selector(context)` 选出一个 `Algorithm`；`decide()` 只调用选择器一次、算法一次。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
   （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
   大小写与标点保留。
 - 选择器或算法抛出的异常原样向上传播；命令层记录日志并回复降级文案，核心不吞异常。
+
+## 内置算法
+
+两个算法都不创建 `random.Random`，而是让 `DecisionContext` 直接参与位级运算：
+`protocol.derive_algorithm_bits()` 为每个采样点派生一个 64 位 BLAKE2b 算子并取最高位。
+
+- `geomancy`：16 个爻位组成四母图（每图四行，1 表示单点/主动，0 表示双点/被动）；
+  四女由四母转置得到，四侄、左右见证与裁判按逐行异或得到。裁判必为偶数图；按传统
+  简易是非读法，稳定图回答“是”，流动图回答“否”。`FIGURES` 表同时记录 16 图的传统
+  稳定/流动属性。
+- `obi-ifa`：四枚宝螺的开口数给出 Obi 字母（分布 1:4:6:4:1）。Alafia 与 Etawa 为肯定，
+  Okana 与 Oyekun 为否定；Eyeife 是 2:2 的平衡之象，此时再掷八枚宝螺组成 Ifa 奥杜，
+  以单爻数量的奇偶判定。该“Eyeife 转 Ifa”约定使最终先验为 50/50，是插件的模拟约定，
+  不是对所有传统的统一解释。
 
 ## 算法选择与注册
 
@@ -82,9 +97,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   并回退到 `random`。
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
-- `tests/test_decider_algorithms.py` 验证注册表与算法确定性；`tests/test_selector.py`
-  用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，避免
-  统计型断言。
+- `tests/test_decider_algorithms.py` 验证注册表、算法确定性与上下文熵，并用固定样本
+  检查地占盾盘的转置/异或结构、裁判必为偶数图，以及 Obi 字母、Ifa 奥杜奇偶与
+  Eyeife 转 Ifa 的分支；`tests/test_selector.py` 用假算法验证固定/随机/禁用/重名规则、
+  `omega` 位映射与 `lambda % N` 选择，避免统计型断言。
 
 ## 新增功能时的落点
 

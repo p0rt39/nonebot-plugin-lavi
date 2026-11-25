@@ -31,7 +31,9 @@ prek run --all-files
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
 - `test_decision.py`：二元决策核心契约——参数解析的两种模式、选择器/计算器共享同一
   `DecisionContext` 且各调用一次、`capture_context()` 的时间/进程/熵采样、异常传播。
-- `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵。
+- `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵；
+  地占盾盘的参考盘、转置/异或不变量与裁判偶数性；Obi 字母、Ifa 奥杜奇偶与
+  Eyeife 转 Ifa 的分支。
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
   未知/重名算法拒绝、种子域分离。
 - `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试。
