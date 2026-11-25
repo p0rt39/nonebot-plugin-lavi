@@ -76,10 +76,12 @@ prek run --all-files
 src/nonebot_plugin_rawtell/
 ├── __init__.py      # 插件入口、__plugin_meta__、配置与数据目录
 ├── config.py        # RAWTELL__ 配置模型
-└── protocol.py      # 共享 Pydantic 模型
+├── decision.py      # 二元决策：参数解析与选择器编排
+└── protocol.py      # 共享 Pydantic 模型与决策类型
 tests/
 ├── conftest.py      # NoneBot 初始化与数据目录隔离
 ├── fake.py          # OneBot V11 假事件
+├── test_decision.py # 二元决策骨架验收测试
 └── plugin_test.py   # 插件加载冒烟测试
 docs/                # 描述性参考（架构、测试、发布）
 AGENTS.md            # 分层规则文件（根 / 包 / 测试）

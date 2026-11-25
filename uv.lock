@@ -1085,6 +1085,7 @@ source = { editable = "." }
 dependencies = [
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot2" },
+    { name = "pydantic" },
 ]
 
 [package.optional-dependencies]
@@ -1119,6 +1120,7 @@ requires-dist = [
     { name = "nonebot-adapter-onebot", marker = "extra == 'onebot'", specifier = ">=2.4.6,<3.0.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.0,<1.0.0" },
     { name = "nonebot2", specifier = ">=2.5.0,<3.0.0" },
+    { name = "pydantic", specifier = ">=1.10.0,<3.0.0" },
 ]
 provides-extras = ["onebot"]
 

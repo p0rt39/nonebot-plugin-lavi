@@ -9,10 +9,12 @@
 src/nonebot_plugin_rawtell/
 ├── __init__.py      # NoneBot 集成：__plugin_meta__、配置、插件数据目录
 ├── config.py        # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
-└── protocol.py      # 跨子模块共享的 Pydantic 模型
+├── decision.py      # 参数解析与选择器→计算器编排（无 NoneBot 依赖）
+└── protocol.py      # 跨子模块共享的 Pydantic 模型与决策类型
 tests/
 ├── conftest.py      # NoneBot 初始化、适配器注册、数据目录隔离
 ├── fake.py          # OneBot V11 假事件构造
+├── test_decision.py # 二元决策骨架验收测试
 └── plugin_test.py   # 插件加载冒烟测试
 ```
 
