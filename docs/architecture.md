@@ -18,7 +18,8 @@ tests/
 └── plugin_test.py   # 插件加载冒烟测试
 ```
 
-当前处于初始化阶段：只有骨架与一条「零配置可加载」的冒烟测试，业务功能尚未实现。
+当前处于初始化阶段：二元决策核心与对应单元测试已就位；命令注册、选择器算法与持久化
+尚未实现，因此用户侧仍无可用功能。
 
 ## 运行时入口
 
@@ -29,6 +30,28 @@ tests/
 - 读取 `get_plugin_config(Config).rawtell` 得到 `plugin_config`。
 
 新增命令与生命周期钩子也注册在这里，处理逻辑放同级子模块，避免把业务继续堆进入口文件。
+
+## 二元决策骨架
+
+`protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层尚未接入。
+
+```text
+arguments ──parse_options──> (affirmative, negative)
+                                   │
+capture_context() ──> DecisionContext ──selector──> Calculator ──> bool
+                                   │                        │
+                                   └────── same object ─────┘
+                                   result: affirmative / negative
+```
+
+- `capture_context()` 只采样一次当前 UTC 时间与进程 `pid`，封装为 `DecisionContext`。
+- `selector(context)` 选出一个 `Calculator`；选择器与计算器接收同一个 `DecisionContext`，
+  看不到命令原文，也不能各自重新采样。
+- `decide()` 调用选择器一次、计算器一次，按布尔结果返回对应的候选项。
+- `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
+  （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
+  大小写与标点保留。
+- 选择器或计算器抛出的异常原样向上传播；核心不内置占卜算法。
 
 ## 新增功能时的落点
 
@@ -52,4 +75,5 @@ tests/
 
 ## 待定
 
-适配器支持面、数据模型与命令集在功能设计确定后补充到本文与各级 `AGENTS.md`。
+命令入口与选择器算法、适配器支持面、持久化数据模型在功能设计确定后补充到本文与各级
+`AGENTS.md`；`protocol.py`/`decision.py` 的公开契约以源码与 `tests/test_decision.py` 为准。

@@ -29,7 +29,12 @@ prek run --all-files
 
 - `conftest.py`：注册 OneBot V11 适配器，用 `nonebot.load_from_toml("pyproject.toml")` 加载插件。
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
+- `test_decision.py`：二元决策骨架的行为契约——参数解析的两种模式、选择器/计算器共享同一
+  `DecisionContext` 且各调用一次、`capture_context()` 的进程与 UTC 时间采样、异常传播。
 - `plugin_test.py`：插件加载与元数据冒烟测试。
+
+`test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher；命令接入后
+再在 `plugin_test.py` 增加端到端交互。
 
 新增功能时按 `<subsystem>` 新建 `test_<subsystem>.py`，命令级交互测试留在 `plugin_test.py`。
 
