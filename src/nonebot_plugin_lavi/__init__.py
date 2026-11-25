@@ -17,12 +17,14 @@ import nonebot_plugin_localstore as store
 
 __plugin_meta__ = PluginMetadata(
     name="LaVI",
-    description="LaVI — a NoneBot2 plugin for binary decisions",
+    description="一个面向二元问题的 NoneBot2 决策插件",
     usage=(
         "/lavi — 回答“是”或“否”\n"
         "/lavi 算法名 — 用指定算法回答“是”或“否”\n"
-        "/lavi 选项A 选项B — 在两个候选中选择一个\n"
-        "/lavi 算法名 选项A 选项B — 用指定算法在两个候选中选择一个"
+        "/lavi 候选1 候选2 — 从两个空白分隔的候选中选择一个\n"
+        "/lavi 算法名 候选1 候选2 — 用指定算法从两个候选中选择一个\n"
+        "算法名：dayan（大衍）、geomancy（地占）、obi-ifa（宝螺）、"
+        "trial（裁判）、random（随机）"
     ),
     type="application",
     homepage="https://github.com/p0rt39/nonebot-plugin-lavi",

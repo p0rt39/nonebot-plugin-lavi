@@ -1,7 +1,7 @@
 [project]
 name = "nonebot-plugin-lavi"
 version = "0.1.0"
-description = "LaVI — a NoneBot2 plugin (work in progress)"
+description = "一个面向二元问题的 NoneBot2 决策插件"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
