@@ -43,6 +43,10 @@ test = [
 requires = ["uv_build>=0.11.0,<0.12.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+# Agent rules are development material; keep them out of the published archives.
+source-exclude = ["src/**/AGENTS.md"]
+
 [tool.coverage.report]
 # Add `fail_under` once the plugin has behavior worth covering end to end.
 exclude_lines = [
