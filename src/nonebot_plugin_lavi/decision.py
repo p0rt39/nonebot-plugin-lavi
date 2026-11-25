@@ -39,18 +39,23 @@ def parse_invocation(arguments: str) -> ParsedInvocation:
     return ParsedInvocation(algorithm=None, text=arguments)
 
 
-def parse_options(arguments: str) -> tuple[str, str]:
+def parse_options(
+    arguments: str,
+    *,
+    options: tuple[str, str] = DEFAULT_OPTIONS,
+) -> tuple[str, str]:
     """Return the two texts ``decide`` may reply with.
 
     Exactly two whitespace-separated fields are kept verbatim and in order.
     Any other count is a single yes/no question: the wording is discarded and
-    the replies are ``"是"``/``"否"``. Quotes are not interpreted, nothing is
-    deduplicated, and case/punctuation are preserved.
+    ``options`` supplies the replies, defaulting to ``"是"``/``"否"``. Quotes
+    are not interpreted, nothing is deduplicated, and case/punctuation are
+    preserved.
     """
     parts = arguments.split(maxsplit=2)
     if len(parts) == 2:
         return parts[0], parts[1]
-    return DEFAULT_OPTIONS
+    return options
 
 
 def decide(
@@ -59,6 +64,7 @@ def decide(
     context: DecisionContext,
     selector: Selector,
     trace: bool = False,
+    options: tuple[str, str] = DEFAULT_OPTIONS,
 ) -> Decision:
     """Select one algorithm, evaluate it once, and return its answer.
 
@@ -69,7 +75,7 @@ def decide(
     also returns its calculation steps. Errors raised by either callable
     propagate.
     """
-    affirmative, negative = parse_options(arguments)
+    affirmative, negative = parse_options(arguments, options=options)
     algorithm = selector(context)
     with count_operators() as tally:
         if trace and algorithm.explain is not None:

@@ -55,8 +55,9 @@ async def _handle_lavi(args: Message = CommandArg()) -> None:
             args.extract_plain_text(),
             selector=algorithm_selector,
             detailed=plugin_config.detailed,
+            text=plugin_config.text,
         )
     except Exception:
         logger.exception("LaVI failed to decide")
-        await lavi.finish("决策算法暂时不可用，请稍后再试。")
+        await lavi.finish(plugin_config.text.unavailable)
     await lavi.finish(answer)

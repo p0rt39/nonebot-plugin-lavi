@@ -2,27 +2,43 @@
 
 from collections.abc import Sequence
 
-HEADER = "🔮 决断仪式"
+from .config import TextConfig
+
+_DEFAULT_TEXT = TextConfig()
 
 
 def _single_line(text: str) -> str:
     return " ".join(text.split())
 
 
-def render_unknown_algorithm(requested: str, *, available: Sequence[str]) -> str:
+def render_unknown_algorithm(
+    requested: str,
+    *,
+    available: Sequence[str],
+    text: TextConfig = _DEFAULT_TEXT,
+) -> str:
     """Return the usable algorithm names after an unknown selection."""
     options = "、".join(available)
-    return (
-        f"⚠️ 未知算法：「{_single_line(requested)}」\n"
-        f"可用算法：{options}；random（随机）"
+    return "\n".join(
+        (
+            text.unknown_algorithm.format(requested=_single_line(requested)),
+            text.available_algorithms.format(available=options),
+        )
     )
 
 
-def render_answer(answer: str, *, decider: str) -> str:
+def render_answer(
+    answer: str,
+    *,
+    decider: str,
+    text: TextConfig = _DEFAULT_TEXT,
+) -> str:
     """Return the ritual heading and a clearly labelled result."""
-    return (
-        f"{HEADER}：「{_single_line(decider)}」\n"
-        f"✨ 决断结果：「{_single_line(answer)}」"
+    return "\n".join(
+        (
+            text.header.format(decider=_single_line(decider)),
+            text.result.format(answer=_single_line(answer)),
+        )
     )
 
 
@@ -32,14 +48,16 @@ def render_detailed(
     decider: str,
     operator_count: int,
     steps: tuple[str, ...] = (),
+    text: TextConfig = _DEFAULT_TEXT,
 ) -> str:
     """Separate concise text from the operator count and optional steps."""
     lines = [
-        render_answer(answer, decider=decider),
+        render_answer(answer, decider=decider, text=text),
         "",
-        f"📊 算子数量：{operator_count}",
+        text.operator_count.format(operator_count=operator_count),
     ]
     if steps:
-        lines.append("📜 演算过程：")
+        if text.steps_header:
+            lines.append(text.steps_header)
         lines.extend(_single_line(step) for step in steps)
     return "\n".join(lines)

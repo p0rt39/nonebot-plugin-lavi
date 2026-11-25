@@ -8,7 +8,7 @@
 ```text
 src/nonebot_plugin_lavi/
 ├── __init__.py              # NoneBot 集成：__plugin_meta__、配置、data_dir、matcher 注册
-├── config.py                # Config / ScopedConfig（dotenv 前缀 LAVI__）
+├── config.py                # Config / ScopedConfig / TextConfig（dotenv 前缀 LAVI__）
 ├── protocol.py              # 决策上下文、Algorithm/Explanation/Decision、算子计量与位派生
 ├── decision.py              # 参数解析与选择器→算法编排（产出 Decision，无 NoneBot 依赖）
 ├── selector.py              # 算法注册表校验与选择策略
@@ -24,6 +24,7 @@ tests/
 ├── conftest.py              # NoneBot 初始化、适配器注册、数据目录隔离
 ├── fake.py                  # OneBot V11 假事件构造
 ├── test_command.py          # 命令参数分派与算法覆盖
+├── test_config.py           # 文案配置默认值与校验
 ├── test_decision.py         # 二元决策核心契约
 ├── test_decider_algorithms.py
 ├── test_render.py           # 回答与参数错误渲染
@@ -39,11 +40,13 @@ tests/
 
 - 定义 `__plugin_meta__`（`type="application"`，`config=Config`，`supported_adapters=None`）。
 - `require("nonebot_plugin_localstore")` 后用 `store.get_plugin_data_dir()` 取得 `data_dir`。
-- 读取 `get_plugin_config(Config).lavi` 得到 `plugin_config`。
+- 读取 `get_plugin_config(Config).lavi` 得到 `plugin_config`；其中 `plugin_config.text`
+  是 `TextConfig` 文案模板，随命令一起传给 `handle_lavi()`。
 - 用 `build_selector()` 构建一次算法选择器；配置的算法名无效时记录 WARNING 并回退到
   `random`，保证插件仍可加载。命令层可在单次调用中按参数临时构建选择器，覆盖该默认值。
 - 注册 `/lavi` matcher，并调用 `command.handle_lavi()`；处理函数不持有 `Matcher`，
-  返回的文本已经过 `render.render_answer()` 渲染。
+  返回的文本已经过渲染层生成。处理函数抛异常时，入口记录日志并回复
+  `LAVI__TEXT__UNAVAILABLE` 配置的降级文案。
 
 新增命令与生命周期钩子也注册在这里，处理逻辑放同级子模块，避免把业务继续堆进入口文件。
 
@@ -90,7 +93,8 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   1 字段中的有效算法名构建固定选择器，未知名称静默沿用配置选择器；3 字段中的未知名称
   不推演，直接渲染可用算法列表并中止。`random` 也是合法选择值，表示随机选择。
 - `parse_options()` 在恰好两个空白分隔字段时按原样、按顺序返回两个候选；其他情况
-  （空串、单字段、三个及以上字段）退化为 `"是"`/`"否"`。引号不解析，重复候选不去重，
+  （空串、单字段、三个及以上字段）退化为 `TextConfig.affirmative` /
+  `TextConfig.negative`（默认 `"是"`/`"否"`）。引号不解析，重复候选不去重，
   大小写与标点保留。
 - 选择器或算法抛出的异常原样向上传播；命令层记录日志并回复降级文案，核心不吞异常。
 - `Explanation(answer, steps)` 由算法提供，`steps` 每条一行，只使用同一
@@ -98,12 +102,13 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `Decision.display_name` 来自 `Algorithm.label`：优先使用 `Algorithm.display_name`，
   未设置时回退到稳定的 `name`。详细模式渲染该显示名；`Decision.algorithm` 仍保留稳定
   ID，便于日志与后续持久化。
-- 命令层用 `render.render_answer()` 生成“🔮 决断仪式：「显示名」”与
-  “✨ 决断结果：「答案」”两行，简洁模式也显示算法名；`detailed` 开启时改用
-  `render.render_detailed()`，空一行后追加“📊 算子数量：…”与“📜 演算过程：…”及其
-  步骤行。两种回复都只用纯文本换行与常见标点/emoji，不做边框、对齐或字体宽度计算，
-  避免不同适配器的渲染差异。渲染只影响展示，不改变 `decision.decide()` 返回的答案与
-  元数据，也不参与随机性。
+- 命令层用 `render.render_answer()` 生成首行与结果行，简洁模式也显示算法名；
+  `detailed` 开启时改用 `render.render_detailed()`，空一行后追加算子数行与步骤。
+  这些行的模板来自 `TextConfig`（`LAVI__TEXT__...`），必填占位符分别是 `{decider}`、
+  `{answer}`、`{operator_count}`、`{requested}` 与 `{available}`；动态值先折叠为单行
+  再代入。`steps_header` 为空字符串时不输出步骤标题。两种回复都只用纯文本换行与常见
+  标点/emoji，不做边框、对齐或字体宽度计算，避免不同适配器的渲染差异。渲染只影响展示，
+  不改变 `decision.decide()` 返回的答案与元数据，也不参与随机性。
 
 ## 内置算法
 

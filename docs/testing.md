@@ -31,7 +31,9 @@ prek run --all-files
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
 - `test_command.py`：`handle_lavi()` 的字段数分派——1 字段算法名与未知名称静默回退、
   2 字段保持两个候选、3 字段算法名加候选与未知名称中止、4 个及以上字段保持原行为，
-  以及命令参数对默认选择器的覆盖。
+  命令参数对默认选择器的覆盖，以及自定义文案与肯定/否定词的渲染。
+- `test_config.py`：`TextConfig` 的嵌套构造、`LAVI__TEXT__...` 环境变量解析、必填占位符、
+  非法占位符/花括号、空白纯文本字段，以及允许空步骤标题。
 - `test_decision.py`：二元决策核心契约——`parse_invocation()` 的字段数分派与
   `parse_options()` 的两种模式、选择器/算法共享同一
   `DecisionContext` 且各调用一次、`Decision` 的稳定算法名与显示名、算法算子数（不含
@@ -46,9 +48,10 @@ prek run --all-files
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
   `available_algorithms()` 的过滤与排序、未知/重名算法拒绝、种子域分离。
 - `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤，
-  以及未知算法时的可用算法列表；不依赖字体宽度或边框。
+  未知算法时的可用算法列表，以及 `TextConfig` 自定义模板、空步骤标题与转义花括号；
+  不依赖字体宽度或边框。
 - `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/lavi` 的 nonebug 命令交互测试
-  （单字段算法覆盖、三字段未知算法中止、详细模式输出与完整换行回复）。
+  （单字段算法覆盖、三字段未知算法中止、详细模式输出、自定义文案/肯定词与异常降级文案）。
 
 `test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。
 `test_command.py` 直接调用 `command.handle_lavi()`。命令级测试通过 monkeypatch 替换
