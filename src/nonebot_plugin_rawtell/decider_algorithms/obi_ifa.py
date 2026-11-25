@@ -1,11 +1,17 @@
-"""Obi / Ifa cowrie-shell decision algorithm."""
+"""Obi / Ifa cowrie-shell decision algorithm.
+
+A round casts Obi once. Eyeife sends that round straight to Ifa. Otherwise a
+second Obi confirms the first: if the second is Eyeife, the first Obi decides;
+if it is not, Ifa must answer True for the first Obi to decide. A False Ifa
+restarts the round with freshly derived marks.
+"""
 
 from collections.abc import Sequence
 
 from ..protocol import Algorithm, DecisionContext, derive_algorithm_bits
 
 NAME = "obi-ifa"
-VERSION = 1
+VERSION = 2
 WEIGHT = 1
 
 OBI_SHELLS = 4
@@ -71,27 +77,63 @@ def ifa_verdict(odu: int) -> bool:
     return odu.bit_count() % 2 == 1
 
 
-def calculate(context: DecisionContext) -> bool:
-    """Cast Obi, then consult Ifa when the balanced Eyeife letter appears."""
-    obi_marks = derive_algorithm_bits(
+def _derive_marks(
+    context: DecisionContext, *, stage: str, count: int
+) -> tuple[int, ...]:
+    return derive_algorithm_bits(
         context,
         name=NAME,
         version=VERSION,
-        stage="obi",
-        count=OBI_SHELLS,
+        stage=stage,
+        count=count,
     )
-    verdict = obi_verdict(cast_obi(obi_marks))
-    if verdict is not None:
-        return verdict
 
-    ifa_marks = derive_algorithm_bits(
-        context,
-        name=NAME,
-        version=VERSION,
-        stage="ifa",
-        count=IFA_MARKS,
-    )
-    return ifa_verdict(cast_ifa(ifa_marks))
+
+def calculate(context: DecisionContext) -> bool:
+    """Resolve one round, restarting with fresh marks when Ifa rejects it."""
+    attempt = 0
+    while True:
+        first_open = cast_obi(
+            _derive_marks(
+                context,
+                stage=f"obi:first:{attempt}",
+                count=OBI_SHELLS,
+            )
+        )
+        first_verdict = obi_verdict(first_open)
+        if first_verdict is None:
+            return ifa_verdict(
+                cast_ifa(
+                    _derive_marks(
+                        context,
+                        stage=f"ifa:{attempt}",
+                        count=IFA_MARKS,
+                    )
+                )
+            )
+
+        second_open = cast_obi(
+            _derive_marks(
+                context,
+                stage=f"obi:second:{attempt}",
+                count=OBI_SHELLS,
+            )
+        )
+        if obi_letter(second_open) == EYEIFE:
+            return first_verdict
+
+        if ifa_verdict(
+            cast_ifa(
+                _derive_marks(
+                    context,
+                    stage=f"ifa:{attempt}",
+                    count=IFA_MARKS,
+                )
+            )
+        ):
+            return first_verdict
+
+        attempt += 1
 
 
 ALGORITHM = Algorithm(

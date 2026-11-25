@@ -181,33 +181,138 @@ def test_ifa_verdict_uses_mark_parity(odu: int, expected: bool) -> None:
     assert ifa_verdict(odu) is expected
 
 
-def test_obi_ifa_consults_ifa_for_eyeife(monkeypatch) -> None:
+def _use_stage_bits(monkeypatch, stages: dict[str, tuple[int, ...]]) -> list[str]:
     import nonebot_plugin_rawtell.decider_algorithms.obi_ifa as obi_ifa
 
-    stages: list[str] = []
+    calls: list[str] = []
 
     def fake_bits(_context, *, stage: str, **_kwargs):
-        stages.append(stage)
-        if stage == "obi":
-            return (1, 1, 0, 0)
-        return (1, 0, 0, 0, 0, 0, 0, 0)
+        calls.append(stage)
+        return stages[stage]
 
     monkeypatch.setattr(obi_ifa, "derive_algorithm_bits", fake_bits)
-
-    assert obi_ifa.calculate(_context(1)) is True
-    assert stages == ["obi", "ifa"]
+    return calls
 
 
-def test_obi_ifa_skips_ifa_for_decisive_letters(monkeypatch) -> None:
-    import nonebot_plugin_rawtell.decider_algorithms.obi_ifa as obi_ifa
+@pytest.mark.parametrize(
+    ("ifa_marks", "expected"),
+    [
+        ((1, 0, 0, 0, 0, 0, 0, 0), True),
+        ((0, 0, 0, 0, 0, 0, 0, 0), False),
+    ],
+)
+def test_obi_ifa_first_eyeife_defers_to_ifa(
+    monkeypatch, ifa_marks: tuple[int, ...], expected: bool
+) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
 
-    stages: list[str] = []
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": (1, 1, 0, 0),
+            "ifa:0": ifa_marks,
+        },
+    )
 
-    def fake_bits(_context, *, stage: str, **_kwargs):
-        stages.append(stage)
-        return (1, 1, 1, 0)
+    assert calculate(_context(1)) is expected
+    assert stages == ["obi:first:0", "ifa:0"]
 
-    monkeypatch.setattr(obi_ifa, "derive_algorithm_bits", fake_bits)
 
-    assert obi_ifa.calculate(_context(1)) is True
-    assert stages == ["obi"]
+@pytest.mark.parametrize(
+    ("first_marks", "expected"),
+    [
+        ((1, 1, 1, 0), True),
+        ((1, 0, 0, 0), False),
+    ],
+)
+def test_obi_ifa_second_eyeife_confirms_first_obi(
+    monkeypatch, first_marks: tuple[int, ...], expected: bool
+) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": first_marks,
+            "obi:second:0": (1, 1, 0, 0),
+        },
+    )
+
+    assert calculate(_context(1)) is expected
+    assert stages == ["obi:first:0", "obi:second:0"]
+
+
+@pytest.mark.parametrize(
+    ("first_marks", "second_marks", "expected"),
+    [
+        ((1, 1, 1, 1), (1, 0, 0, 0), True),
+        ((1, 0, 0, 0), (1, 1, 1, 1), False),
+    ],
+)
+def test_obi_ifa_true_ifa_confirms_first_obi(
+    monkeypatch,
+    first_marks: tuple[int, ...],
+    second_marks: tuple[int, ...],
+    expected: bool,
+) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": first_marks,
+            "obi:second:0": second_marks,
+            "ifa:0": (1, 0, 0, 0, 0, 0, 0, 0),
+        },
+    )
+
+    assert calculate(_context(1)) is expected
+    assert stages == ["obi:first:0", "obi:second:0", "ifa:0"]
+
+
+def test_obi_ifa_false_ifa_restarts_the_round(monkeypatch) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": (1, 1, 1, 1),
+            "obi:second:0": (1, 0, 0, 0),
+            "ifa:0": (0, 0, 0, 0, 0, 0, 0, 0),
+            "obi:first:1": (1, 1, 0, 0),
+            "ifa:1": (1, 0, 0, 0, 0, 0, 0, 0),
+        },
+    )
+
+    assert calculate(_context(1)) is True
+    assert stages == [
+        "obi:first:0",
+        "obi:second:0",
+        "ifa:0",
+        "obi:first:1",
+        "ifa:1",
+    ]
+
+
+def test_obi_ifa_restart_uses_the_new_first_verdict(monkeypatch) -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+
+    stages = _use_stage_bits(
+        monkeypatch,
+        {
+            "obi:first:0": (1, 1, 1, 1),
+            "obi:second:0": (1, 0, 0, 0),
+            "ifa:0": (0, 0, 0, 0, 0, 0, 0, 0),
+            "obi:first:1": (1, 0, 0, 0),
+            "obi:second:1": (1, 1, 0, 0),
+        },
+    )
+
+    assert calculate(_context(1)) is False
+    assert stages == [
+        "obi:first:0",
+        "obi:second:0",
+        "ifa:0",
+        "obi:first:1",
+        "obi:second:1",
+    ]

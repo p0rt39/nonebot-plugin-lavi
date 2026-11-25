@@ -33,7 +33,7 @@ prek run --all-files
   `DecisionContext` 且各调用一次、`capture_context()` 的时间/进程/熵采样、异常传播。
 - `test_decider_algorithms.py`：注册表唯一性、算法确定性、算法确实使用上下文熵；
   地占盾盘的参考盘、转置/异或不变量与裁判偶数性；Obi 字母、Ifa 奥杜奇偶与
-  Eyeife 转 Ifa 的分支。
+  Eyeife 转 Ifa、第二次 Obi 确认、Ifa 确认与重开分支。
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
   未知/重名算法拒绝、种子域分离。
 - `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试。
