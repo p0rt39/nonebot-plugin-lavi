@@ -2,6 +2,8 @@
 
 **一个面向二元问题的 NoneBot2 决策插件**
 
+[![pypi](https://img.shields.io/pypi/v/nonebot-plugin-lavi.svg)](https://pypi.python.org/pypi/nonebot-plugin-lavi)
+
 ## 介绍
 
 `nonebot-plugin-lavi` 是一个面向 NoneBot2 的二元决策插件。它提供：
@@ -11,7 +13,7 @@
 
 ## 安装
 
-使用：
+推荐使用 nb-cli：
 
 ```bash
 nb plugin install nonebot-plugin-lavi
@@ -23,12 +25,11 @@ nb plugin install nonebot-plugin-lavi
 uv add nonebot-plugin-lavi
 ```
 
-当前尚未发布到 PyPI，请从源码安装：
+若**不使用** nb-cli 安装，需要自行在 NoneBot 项目的 `pyproject.toml` 中注册插件：
 
-```bash
-git clone https://github.com/p0rt39/nonebot-plugin-lavi.git
-cd nonebot-plugin-lavi
-uv sync --all-groups
+```toml
+[tool.nonebot]
+plugins = ["nonebot_plugin_lavi"]
 ```
 
 ## 配置

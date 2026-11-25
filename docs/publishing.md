@@ -37,9 +37,60 @@
 
 ## 版本与发布
 
-- 当前版本 `0.1.0`，尚未发布到 PyPI；发布流程在功能落地后确定（版本号、标签与 Release 说明的来源）。
+### 当前状态
+
+- 当前版本 `0.1.0`，首个版本尚未发布到 PyPI。
+- 发布统一走 `.github/workflows/release.yml`，由 `v*` 标签触发；本地不执行 `uv publish`。
+- PyPI 发布使用 GitHub Actions OIDC Trusted Publishing，作业运行在 `release` environment。
+- CI 只在 Pull Request 上运行；release workflow 会对被打标签的提交再跑一次测试。
+- 标签版本必须与 `pyproject.toml` 的 `version` 一致；workflow 在发布前校验。
+
+### 首次发布前
+
+在 PyPI 配置 pending publisher：
+
+<https://pypi.org/manage/account/publishing/>
+
+| 字段 | 值 |
+| :--- | :--- |
+| PyPI Project Name | `nonebot-plugin-lavi` |
+| Owner | `p0rt39` |
+| Repository name | `nonebot-plugin-lavi` |
+| Workflow name | `release.yml` |
+| Environment name | `release` |
+
+`Environment name` 必须与 `release.yml` 里的 `environment: release` 完全一致。
+如需人工确认，可在 GitHub 仓库的 `release` environment 上配置 required reviewers。
+
+发布前在本地执行：
+
+```powershell
+uv sync --all-groups
+uv run ruff check .
+uv run ruff format --check .
+uvx basedpyright==1.40.0
+uv run pytest
+```
+
+### 发布
+
+确认 `README.md` 与本文档已反映发布状态，提交并推送 `master` 后打标签：
+
+```powershell
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+workflow 依次执行：校验 tag 与 `pyproject.toml` 版本、运行测试、`uv build`、
+`uv publish --check-url https://pypi.org/simple/`，最后创建 GitHub Release 并上传
+wheel/sdist。发布成功后到 <https://nonebot.dev/store/plugins> 提交商店审核。
+
+### 约束
+
+- PyPI 版本不可覆盖；发布内容有误时递增版本重新发布，不重用已上传的版本号。
+- 工作流失败后可用同一个 tag 重跑：`--check-url` 跳过已上传文件，GitHub Release
+  已存在时改用 `gh release upload --clobber`。
+- 发布作业经 `release` environment 运行；拥有仓库 write 权限即可触发标签发布。
 - 构建后端为 `uv_build`；改动包数据/依赖时用 `uv build` 并检查随包分发的内容。
   `pyproject.toml` 的 `[tool.uv.build-backend] source-exclude` 把各级 `AGENTS.md`
   排除出发行包——agent 规则属于开发材料，新增子目录规则文件时沿用该 glob。
-- CI 只在 Pull Request 上运行；贡献者流程到创建 PR 为止。
-- 标签版本必须与 `pyproject.toml` 的 `version` 一致。
