@@ -11,8 +11,8 @@
 
 - `/rawtell` 命令：回答“是/否”，或从两个空白分隔的候选项中选一个。
 - 不依赖 NoneBot 的决策核心：参数解析、共享决策上下文、选择器/计算器编排。
-- 可插拔算法：`decider_algorithms/` 下每个算法一个文件，内置 `geomancy`（地占盾盘）与
-  `obi-ifa`（Obi 宝螺 / Ifa 奥杜）。
+- 可插拔算法：`decider_algorithms/` 下每个算法一个文件，内置 `dayan`（大衍筮法）、
+  `geomancy`（地占盾盘）与 `obi-ifa`（Obi 宝螺 / Ifa 奥杜）。
 - 算法选择策略：默认每次随机，也可通过 `RAWTELL__ALGORITHM` 固定算法。
 - 分层 `AGENTS.md` 规则文件与 `docs/` 描述性参考。
 - ruff、BasedPyright、pytest/nonebug、prek 的检查链。
@@ -44,10 +44,15 @@ uv sync --all-groups
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `geomancy` 或 `obi-ifa` |
+| `RAWTELL__ALGORITHM` | `str` | `random` | 选择算法；`random` 为每次决策随机选择，也可填 `dayan`、`geomancy` 或 `obi-ifa` |
 
 ## 内置算法
 
+- `dayan`：模拟大衍筮法。五十根蓍草中取一根不用，余四十九根；每爻三变，第一变按
+  3:1 移除五根或九根，后两变各按 1:1 移除四根或八根，三变后余数除以四得到
+  6/7/8/9。爻值概率为 1/16、5/16、7/16、3/16，阴阳各占 8/16；变爻、之卦与
+  阳爻多数都不是 50/50。因此本插件只取本卦六爻阳爻数量的奇偶：每个爻阴阳各半，
+  64 种本卦中恰有 32 种回答“是”。多轮重抽或统计去偏不会带来额外公平性，故不采用。
 - `geomancy`：以 16 个由决策上下文直接派生的爻位起四母图，按地占加法（逐行异或）
   推导四女、四侄、左右见证与裁判。裁判必然是偶数图；按传统简易是非读法，稳定图回答
   “是”，流动图回答“否”。
@@ -56,9 +61,9 @@ uv sync --all-groups
   否则再掷一次 Obi：第二次为 Eyeife 时按首轮结果，第二次不是 Eyeife 时转 Ifa；Ifa 为真
   按首轮结果，Ifa 为假则重新开始一轮。Ifa 以八枚宝螺组成奥杜，按单爻数量的奇偶判定。
 
-两个算法都是对传统占卜结构的程序化模拟，用于决策娱乐，不构成宗教实践建议。每个爻位/
-宝螺位都从 `DecisionContext` 单独派生的 BLAKE2b 算子取最高位，与选择器使用同一类位级
-采样方式，但 purpose 域与算法身份绑定，互不相关。
+三个算法都是对传统占卜结构的程序化模拟，用于决策娱乐，不构成宗教实践建议。每个爻位/
+宝螺位/蓍草变数都从 `DecisionContext` 单独派生的 BLAKE2b 算子取最高位，与选择器使用
+同一类位级采样方式，但 purpose 域与算法身份绑定，互不相关。
 
 ## 命令
 
@@ -101,6 +106,7 @@ src/nonebot_plugin_rawtell/
 ├── command.py               # /rawtell 处理函数
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
+    ├── dayan.py             # 大衍筮法算法
     ├── geomancy.py          # 地占盾盘算法
     └── obi_ifa.py           # Obi / Ifa 宝螺算法
 tests/

@@ -15,6 +15,7 @@ src/nonebot_plugin_rawtell/
 ├── command.py               # /rawtell 处理函数（不持有 Matcher）
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
+    ├── dayan.py             # 大衍筮法算法
     ├── geomancy.py          # 地占盾盘算法
     └── obi_ifa.py           # Obi / Ifa 宝螺算法
 tests/
@@ -71,9 +72,14 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 
 ## 内置算法
 
-两个算法都不创建 `random.Random`，而是让 `DecisionContext` 直接参与位级运算：
+三个算法都不创建 `random.Random`，而是让 `DecisionContext` 直接参与位级运算：
 `protocol.derive_algorithm_bits()` 为每个采样点派生一个 64 位 BLAKE2b 算子并取最高位。
 
+- `dayan`：五十根蓍草取一根不用，余四十九根；每爻三变，第一变以 3:1 移除五根或
+  九根，后两变各以 1:1 移除四根或八根，三变后余数除以四得到 6/7/8/9。爻值概率为
+  1/16、5/16、7/16、3/16，因此变爻、之卦和阳爻多数都不适合直接映射为二元结果；
+  但阴阳极性（6/8 对 7/9）恰为 8/16 对 8/16。算法取本卦六爻阳爻数量的奇偶，
+  64 种本卦中正好 32 种回答“是”，无需多轮重抽或额外去偏。
 - `geomancy`：16 个爻位组成四母图（每图四行，1 表示单点/主动，0 表示双点/被动）；
   四女由四母转置得到，四侄、左右见证与裁判按逐行异或得到。裁判必为偶数图；按传统
   简易是非读法，稳定图回答“是”，流动图回答“否”。`FIGURES` 表同时记录 16 图的传统
@@ -98,9 +104,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - 算法必须同步、纯函数化，只读 `DecisionContext`；不得访问 NoneBot、网络、文件或全局
   `random`。需要外部资源的算法应在启动阶段预取，而不是在 `calculate` 里阻塞。
 - `tests/test_decider_algorithms.py` 验证注册表、算法确定性与上下文熵，并用固定样本
-  检查地占盾盘的转置/异或结构、裁判必为偶数图，以及 Obi 字母、Ifa 奥杜奇偶与
-  Eyeife 转 Ifa 的分支；`tests/test_selector.py` 用假算法验证固定/随机/禁用/重名规则、
-  `omega` 位映射与 `lambda % N` 选择，避免统计型断言。
+  检查地占盾盘的转置/异或结构、裁判必为偶数图、大衍筮法的变数分布与阳爻奇偶，
+  以及 Obi 字母、Ifa 奥杜奇偶与 Eyeife 转 Ifa 的分支；`tests/test_selector.py`
+  用假算法验证固定/随机/禁用/重名规则、`omega` 位映射与 `lambda % N` 选择，
+  避免统计型断言。
 
 ## 新增功能时的落点
 

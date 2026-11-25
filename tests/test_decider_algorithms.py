@@ -72,6 +72,98 @@ def test_algorithm_bits_are_derived_from_the_shared_context() -> None:
     assert len(first) == 16
 
 
+def test_dayan_change_removals_follow_canonical_counts() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.dayan import (
+        first_change_removal,
+        later_change_removal,
+    )
+
+    first = [
+        first_change_removal((first_bit, second_bit))
+        for first_bit in (0, 1)
+        for second_bit in (0, 1)
+    ]
+
+    assert sorted(first) == [5, 5, 5, 9]
+    assert [later_change_removal(mark) for mark in (0, 1)] == [4, 8]
+
+
+def test_dayan_line_values_have_canonical_distribution_and_balance() -> None:
+    from itertools import product
+    from collections import Counter
+
+    from nonebot_plugin_rawtell.decider_algorithms.dayan import is_yang, cast_line
+
+    lines = [cast_line(marks) for marks in product((0, 1), repeat=4)]
+
+    assert Counter(lines) == {6: 1, 7: 5, 8: 7, 9: 3}
+    assert sum(is_yang(line) for line in lines) == 8
+
+
+def test_dayan_cast_hexagram_preserves_line_order() -> None:
+    from nonebot_plugin_rawtell.decider_algorithms.dayan import cast_hexagram
+
+    marks = (
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        1,
+        1,
+    )
+
+    assert cast_hexagram(marks) == (9, 8, 7, 6, 9, 6)
+
+
+@pytest.mark.parametrize(
+    ("lines", "expected"),
+    [
+        ((9, 9, 9, 9, 9, 9), False),
+        ((9, 9, 9, 9, 9, 6), True),
+        ((9, 9, 9, 6, 6, 6), True),
+        ((9, 9, 6, 6, 6, 6), False),
+    ],
+)
+def test_dayan_answers_from_yang_line_parity(
+    monkeypatch, lines: tuple[int, ...], expected: bool
+) -> None:
+    import nonebot_plugin_rawtell.decider_algorithms.dayan as dayan
+
+    line_marks = {
+        9: (0, 0, 0, 0),
+        8: (0, 0, 0, 1),
+        7: (0, 0, 1, 1),
+        6: (1, 1, 1, 1),
+    }
+    marks = tuple(mark for line in lines for mark in line_marks[line])
+
+    monkeypatch.setattr(
+        dayan,
+        "derive_algorithm_bits",
+        lambda *_args, **_kwargs: marks,
+    )
+
+    assert dayan.calculate(_context(1)) is expected
+
+
 def test_geomancy_derives_the_reference_shield_chart() -> None:
     from nonebot_plugin_rawtell.decider_algorithms.geomancy import build_chart
 
