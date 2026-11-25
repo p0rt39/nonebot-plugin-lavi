@@ -2,14 +2,15 @@
 
 **一个 NoneBot2 插件（开发中）**
 
-> 本仓库目前处于初始化阶段：骨架、工具链与验证流程已就位，业务功能尚未实现。
-> 请勿在生产环境启用。
+> 本仓库目前处于初始化阶段：骨架、工具链、二元决策核心与测试已就位；尚无命令入口，
+> 业务功能尚未实现。请勿在生产环境启用。
 
 ## 介绍
 
 `nonebot-plugin-rawtell` 是一个面向 NoneBot2 的插件模板与开发起点。它提供：
 
 - 可运行的插件入口（`__plugin_meta__`、scoped config、localstore 数据目录）。
+- 不依赖 NoneBot 的二元决策核心：参数解析、共享决策上下文、可注入的选择器/计算器。
 - 分层 `AGENTS.md` 规则文件与 `docs/` 描述性参考。
 - ruff、BasedPyright、pytest/nonebug、prek 的检查链。
 - 测试环境隔离：套件不读写仓库内的 `data/`。
@@ -76,10 +77,12 @@ prek run --all-files
 src/nonebot_plugin_rawtell/
 ├── __init__.py      # 插件入口、__plugin_meta__、配置与数据目录
 ├── config.py        # RAWTELL__ 配置模型
-└── protocol.py      # 共享 Pydantic 模型
+├── decision.py      # 二元决策：参数解析与选择器编排
+└── protocol.py      # 共享 Pydantic 模型与决策类型
 tests/
 ├── conftest.py      # NoneBot 初始化与数据目录隔离
 ├── fake.py          # OneBot V11 假事件
+├── test_decision.py # 二元决策骨架验收测试
 └── plugin_test.py   # 插件加载冒烟测试
 docs/                # 描述性参考（架构、测试、发布）
 AGENTS.md            # 分层规则文件（根 / 包 / 测试）

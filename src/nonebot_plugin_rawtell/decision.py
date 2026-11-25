@@ -1,0 +1,35 @@
+"""Reduce ``/rawtell`` arguments to one of two replies.
+
+This module holds no NoneBot objects and no built-in algorithm: callers inject a
+:data:`~nonebot_plugin_rawtell.protocol.Selector`, which picks a calculator for
+the shared :class:`~nonebot_plugin_rawtell.protocol.DecisionContext`.
+"""
+
+from .protocol import Selector, DecisionContext
+
+DEFAULT_OPTIONS = ("是", "否")
+
+
+def parse_options(arguments: str) -> tuple[str, str]:
+    """Return the two texts ``decide`` may reply with.
+
+    Exactly two whitespace-separated fields are kept verbatim and in order.
+    Any other count is a single yes/no question: the wording is discarded and
+    the replies are ``"是"``/``"否"``. Quotes are not interpreted, nothing is
+    deduplicated, and case/punctuation are preserved.
+    """
+    parts = arguments.split(maxsplit=2)
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    return DEFAULT_OPTIONS
+
+
+def decide(arguments: str, *, context: DecisionContext, selector: Selector) -> str:
+    """Select a calculator once, evaluate it once, and return its option.
+
+    ``selector`` and the calculator it returns both receive ``context`` as-is;
+    nothing is sampled here. Errors raised by either callable propagate.
+    """
+    affirmative, negative = parse_options(arguments)
+    calculator = selector(context)
+    return affirmative if calculator(context) else negative

@@ -8,7 +8,9 @@ Scope：`src/nonebot_plugin_rawtell/`（Python 包根）。先读根 `AGENTS.md`
   目前不放命令与生命周期钩子；新增时先在这里注册，实现留在子模块。
 - `config.py`：`Config` 与 `ScopedConfig`（dotenv 前缀 `RAWTELL__`）。配置默认值**必须与
   `../../README.md` 配置表保持一致**——修改默认值的同一时间更新 README 表格。
-- `protocol.py`：跨子模块共享的领域 Pydantic 模型。
+- `protocol.py`：跨子模块共享的领域 Pydantic 模型，以及决策上下文与选择器/计算器类型。
+- `decision.py`：`/rawtell` 参数解析（单项问题/两个候选项）和选择器→计算器的编排；
+  不依赖 NoneBot，也不内置占卜算法。
 
 新增功能时新建子模块（例如 `render.py`、`storage.py`），并在本文件补充其职责一行；
 不要把所有逻辑继续堆进 `__init__.py`。
