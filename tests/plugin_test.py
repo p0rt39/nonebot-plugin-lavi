@@ -5,7 +5,7 @@ from fake import fake_private_message_event_v11
 from nonebug import App
 
 if TYPE_CHECKING:
-    from nonebot_plugin_rawtell.protocol import (
+    from nonebot_plugin_lavi.protocol import (
         Algorithm,
         Explanation,
         DecisionContext,
@@ -20,7 +20,7 @@ def _algorithm(
     operators: int = 0,
     steps: tuple[str, ...] = (),
 ) -> "Algorithm":
-    from nonebot_plugin_rawtell.protocol import (
+    from nonebot_plugin_lavi.protocol import (
         Algorithm,
         Explanation,
         derive_algorithm_bits,
@@ -56,29 +56,29 @@ def _algorithm(
 
 async def test_plugin_loads(app: App):
     """The plugin must load with zero configuration."""
-    from nonebot_plugin_rawtell import __plugin_meta__
+    from nonebot_plugin_lavi import __plugin_meta__
 
-    plugin = nonebot.get_plugin("nonebot_plugin_rawtell")
+    plugin = nonebot.get_plugin("nonebot_plugin_lavi")
 
     assert plugin is not None
-    assert __plugin_meta__.name == "rAwTell"
+    assert __plugin_meta__.name == "LaVI"
     assert __plugin_meta__.type == "application"
 
 
-async def test_rawtell_replies_with_first_candidate(app: App, monkeypatch):
+async def test_lavi_replies_with_first_candidate(app: App, monkeypatch):
     from nonebot.adapters.onebot.v11 import Bot
     from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
 
-    import nonebot_plugin_rawtell as plugin
+    import nonebot_plugin_lavi as plugin
 
     monkeypatch.setattr(
         plugin,
         "algorithm_selector",
         lambda _context: _algorithm(result=True),
     )
-    event = fake_private_message_event_v11(message="/rawtell 红茶 咖啡")
+    event = fake_private_message_event_v11(message="/lavi 红茶 咖啡")
 
-    async with app.test_matcher(plugin.rawtell) as ctx:
+    async with app.test_matcher(plugin.lavi) as ctx:
         adapter = nonebot.get_adapter(OnebotV11Adapter)
         bot = ctx.create_bot(base=Bot, adapter=adapter)
         ctx.receive_event(bot, event)
@@ -91,20 +91,20 @@ async def test_rawtell_replies_with_first_candidate(app: App, monkeypatch):
         ctx.should_finished()
 
 
-async def test_rawtell_defaults_to_yes_no(app: App, monkeypatch):
+async def test_lavi_defaults_to_yes_no(app: App, monkeypatch):
     from nonebot.adapters.onebot.v11 import Bot
     from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
 
-    import nonebot_plugin_rawtell as plugin
+    import nonebot_plugin_lavi as plugin
 
     monkeypatch.setattr(
         plugin,
         "algorithm_selector",
         lambda _context: _algorithm(result=False),
     )
-    event = fake_private_message_event_v11(message="/rawtell")
+    event = fake_private_message_event_v11(message="/lavi")
 
-    async with app.test_matcher(plugin.rawtell) as ctx:
+    async with app.test_matcher(plugin.lavi) as ctx:
         adapter = nonebot.get_adapter(OnebotV11Adapter)
         bot = ctx.create_bot(base=Bot, adapter=adapter)
         ctx.receive_event(bot, event)
@@ -117,13 +117,11 @@ async def test_rawtell_defaults_to_yes_no(app: App, monkeypatch):
         ctx.should_finished()
 
 
-async def test_rawtell_detailed_mode_shows_decider_count_and_trace(
-    app: App, monkeypatch
-):
+async def test_lavi_detailed_mode_shows_decider_count_and_trace(app: App, monkeypatch):
     from nonebot.adapters.onebot.v11 import Bot
     from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
 
-    import nonebot_plugin_rawtell as plugin
+    import nonebot_plugin_lavi as plugin
 
     monkeypatch.setattr(plugin.plugin_config, "detailed", True)
     monkeypatch.setattr(
@@ -137,9 +135,9 @@ async def test_rawtell_detailed_mode_shows_decider_count_and_trace(
             steps=("首掷示例", "结论示例"),
         ),
     )
-    event = fake_private_message_event_v11(message="/rawtell 红茶 咖啡")
+    event = fake_private_message_event_v11(message="/lavi 红茶 咖啡")
 
-    async with app.test_matcher(plugin.rawtell) as ctx:
+    async with app.test_matcher(plugin.lavi) as ctx:
         adapter = nonebot.get_adapter(OnebotV11Adapter)
         bot = ctx.create_bot(base=Bot, adapter=adapter)
         ctx.receive_event(bot, event)
@@ -158,16 +156,16 @@ async def test_rawtell_detailed_mode_shows_decider_count_and_trace(
         ctx.should_finished()
 
 
-async def test_rawtell_single_argument_selects_algorithm(app: App, monkeypatch):
+async def test_lavi_single_argument_selects_algorithm(app: App, monkeypatch):
     from datetime import datetime, timezone
 
     from nonebot.adapters.onebot.v11 import Bot
     from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
 
-    import nonebot_plugin_rawtell as plugin
-    import nonebot_plugin_rawtell.command as command_module
-    from nonebot_plugin_rawtell.protocol import DecisionContext
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    import nonebot_plugin_lavi as plugin
+    import nonebot_plugin_lavi.command as command_module
+    from nonebot_plugin_lavi.protocol import DecisionContext
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     context = DecisionContext(
         timestamp=datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc),
@@ -184,9 +182,9 @@ async def test_rawtell_single_argument_selects_algorithm(app: App, monkeypatch):
         "algorithm_selector",
         lambda _context: _algorithm(result=True),
     )
-    event = fake_private_message_event_v11(message="/rawtell trial")
+    event = fake_private_message_event_v11(message="/lavi trial")
 
-    async with app.test_matcher(plugin.rawtell) as ctx:
+    async with app.test_matcher(plugin.lavi) as ctx:
         adapter = nonebot.get_adapter(OnebotV11Adapter)
         bot = ctx.create_bot(base=Bot, adapter=adapter)
         ctx.receive_event(bot, event)
@@ -199,15 +197,15 @@ async def test_rawtell_single_argument_selects_algorithm(app: App, monkeypatch):
         ctx.should_finished()
 
 
-async def test_rawtell_three_arguments_reject_unknown_algorithm(app: App):
+async def test_lavi_three_arguments_reject_unknown_algorithm(app: App):
     from nonebot.adapters.onebot.v11 import Bot
     from nonebot.adapters.onebot.v11 import Adapter as OnebotV11Adapter
 
-    import nonebot_plugin_rawtell as plugin
+    import nonebot_plugin_lavi as plugin
 
-    event = fake_private_message_event_v11(message="/rawtell missing 红茶 咖啡")
+    event = fake_private_message_event_v11(message="/lavi missing 红茶 咖啡")
 
-    async with app.test_matcher(plugin.rawtell) as ctx:
+    async with app.test_matcher(plugin.lavi) as ctx:
         adapter = nonebot.get_adapter(OnebotV11Adapter)
         bot = ctx.create_bot(base=Bot, adapter=adapter)
         ctx.receive_event(bot, event)

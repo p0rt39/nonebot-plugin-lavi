@@ -18,10 +18,10 @@ else:
 # Point the plugin data directory at a throwaway location before NoneBot loads
 # the plugin, so the suite never reads or writes the repository's ``data/`` tree
 # and local runtime state cannot decide a test outcome.
-_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="rawtell-test-data-"))
+_TEST_DATA_DIR = Path(tempfile.mkdtemp(prefix="lavi-test-data-"))
 atexit.register(shutil.rmtree, _TEST_DATA_DIR, True)
 os.environ["LOCALSTORE_PLUGIN_DATA_DIR"] = json.dumps(
-    {"nonebot_plugin_rawtell": str(_TEST_DATA_DIR)}
+    {"nonebot_plugin_lavi": str(_TEST_DATA_DIR)}
 )
 
 

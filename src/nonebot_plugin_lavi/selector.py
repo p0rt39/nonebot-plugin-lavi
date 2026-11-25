@@ -88,7 +88,7 @@ def hash_omega(omega: int) -> int:
     digest = hashlib.blake2b(
         omega.to_bytes(4, "big"),
         digest_size=8,
-        person=b"rawtell",
+        person=b"lavi",
     )
     return int.from_bytes(digest.digest(), "big")
 

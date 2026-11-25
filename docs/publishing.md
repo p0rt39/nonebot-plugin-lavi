@@ -6,8 +6,8 @@
 ## 商店审核红线（违反将被自动拒绝）
 
 1. **命名**
-   - 项目名（PyPI/GitHub）：`nonebot-plugin-rawtell`（词间 `-`）。
-   - 模块名（Python import）：`nonebot_plugin_rawtell`（词间 `_`）。
+   - 项目名（PyPI/GitHub）：`nonebot-plugin-lavi`（词间 `-`）。
+   - 模块名（Python import）：`nonebot_plugin_lavi`（词间 `_`）。
 
 2. **依赖管理**
    - 版本用宽松区间 `>=X.Y,<Z.0`（或 `~=`），不要 `==` 锁死。
@@ -33,7 +33,7 @@
    - import 可选插件前先 `require("nonebot_plugin_xxx")`。
 
 8. **README 安装方式**
-   - 必须展示 `nb plugin install nonebot-plugin-rawtell`；不要以旧式 `bot.py` 配置方式作为安装路径。
+   - 必须展示 `nb plugin install nonebot-plugin-lavi`；不要以旧式 `bot.py` 配置方式作为安装路径。
 
 ## 版本与发布
 

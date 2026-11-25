@@ -2,7 +2,7 @@
 
 
 def test_unknown_algorithm_lists_available_choices() -> None:
-    from nonebot_plugin_rawtell.render import render_unknown_algorithm
+    from nonebot_plugin_lavi.render import render_unknown_algorithm
 
     assert render_unknown_algorithm(
         "missing",
@@ -14,7 +14,7 @@ def test_unknown_algorithm_lists_available_choices() -> None:
 
 
 def test_answer_is_rendered_as_ritual_heading_and_result() -> None:
-    from nonebot_plugin_rawtell.render import render_answer
+    from nonebot_plugin_lavi.render import render_answer
 
     assert (
         render_answer("是", decider="大衍")
@@ -27,7 +27,7 @@ def test_answer_is_rendered_as_ritual_heading_and_result() -> None:
 
 
 def test_answer_whitespace_is_collapsed_within_its_line() -> None:
-    from nonebot_plugin_rawtell.render import render_answer
+    from nonebot_plugin_lavi.render import render_answer
 
     assert (
         render_answer("  红茶\n咖啡  ", decider="宝螺")
@@ -36,7 +36,7 @@ def test_answer_whitespace_is_collapsed_within_its_line() -> None:
 
 
 def test_answer_text_is_preserved_verbatim_apart_from_whitespace() -> None:
-    from nonebot_plugin_rawtell.render import render_answer
+    from nonebot_plugin_lavi.render import render_answer
 
     assert (
         render_answer("Earl-Grey！", decider="裁判")
@@ -45,7 +45,7 @@ def test_answer_text_is_preserved_verbatim_apart_from_whitespace() -> None:
 
 
 def test_detailed_reply_separates_concise_and_detail_blocks() -> None:
-    from nonebot_plugin_rawtell.render import render_detailed
+    from nonebot_plugin_lavi.render import render_detailed
 
     result = render_detailed("红茶", decider="大衍", operator_count=24)
 
@@ -54,7 +54,7 @@ def test_detailed_reply_separates_concise_and_detail_blocks() -> None:
 
 
 def test_detailed_reply_lists_calculation_steps_under_a_header() -> None:
-    from nonebot_plugin_rawtell.render import render_detailed
+    from nonebot_plugin_lavi.render import render_detailed
 
     result = render_detailed(
         "红茶",

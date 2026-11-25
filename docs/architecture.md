@@ -1,4 +1,4 @@
-# rAwTell 架构参考（描述性）
+# LaVI 架构参考（描述性）
 
 > 本文是**描述性参考**，不是权威指令。约束性条目见各级 [AGENTS.md](../AGENTS.md)。
 > 源码与测试始终是最终事实来源。
@@ -6,13 +6,13 @@
 ## 项目形态
 
 ```text
-src/nonebot_plugin_rawtell/
+src/nonebot_plugin_lavi/
 ├── __init__.py              # NoneBot 集成：__plugin_meta__、配置、data_dir、matcher 注册
-├── config.py                # Config / ScopedConfig（dotenv 前缀 RAWTELL__）
+├── config.py                # Config / ScopedConfig（dotenv 前缀 LAVI__）
 ├── protocol.py              # 决策上下文、Algorithm/Explanation/Decision、算子计量与位派生
 ├── decision.py              # 参数解析与选择器→算法编排（产出 Decision，无 NoneBot 依赖）
 ├── selector.py              # 算法注册表校验与选择策略
-├── command.py               # /rawtell 处理函数（不持有 Matcher）
+├── command.py               # /lavi 处理函数（不持有 Matcher）
 ├── render.py                # 决策答案的单行文本渲染
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
@@ -31,7 +31,7 @@ tests/
 └── plugin_test.py           # 插件加载与命令交互测试
 ```
 
-当前状态：参数解析、决策核心、算法选择与 `/rawtell` 命令已接通；决策历史与持久化尚未实现。
+当前状态：参数解析、决策核心、算法选择与 `/lavi` 命令已接通；决策历史与持久化尚未实现。
 
 ## 运行时入口
 
@@ -39,10 +39,10 @@ tests/
 
 - 定义 `__plugin_meta__`（`type="application"`，`config=Config`，`supported_adapters=None`）。
 - `require("nonebot_plugin_localstore")` 后用 `store.get_plugin_data_dir()` 取得 `data_dir`。
-- 读取 `get_plugin_config(Config).rawtell` 得到 `plugin_config`。
+- 读取 `get_plugin_config(Config).lavi` 得到 `plugin_config`。
 - 用 `build_selector()` 构建一次算法选择器；配置的算法名无效时记录 WARNING 并回退到
   `random`，保证插件仍可加载。命令层可在单次调用中按参数临时构建选择器，覆盖该默认值。
-- 注册 `/rawtell` matcher，并调用 `command.handle_rawtell()`；处理函数不持有 `Matcher`，
+- 注册 `/lavi` matcher，并调用 `command.handle_lavi()`；处理函数不持有 `Matcher`，
   返回的文本已经过 `render.render_answer()` 渲染。
 
 新增命令与生命周期钩子也注册在这里，处理逻辑放同级子模块，避免把业务继续堆进入口文件。
@@ -50,7 +50,7 @@ tests/
 ## 二元决策骨架
 
 `protocol.py` 与 `decision.py` 构成不依赖 NoneBot 的决策核心；命令层通过
-`command.handle_rawtell()` 接入。
+`command.handle_lavi()` 接入。
 
 ```text
 arguments ──parse_invocation──> (algorithm?, text)
@@ -142,12 +142,12 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   `calculate`、可选 `display_name` 与可选 `explain`。行为变化时递增 `version`，使派生
   种子随契约变化。`display_name` 只用于展示，`label` 在未设置时回退到 `name`。当前
   `weight` 只作为启用标记：`0` 表示禁用，正值不参与概率分配。
-- `RAWTELL__ALGORITHM` 默认 `random`：`selector.py` 从 `DecisionContext` 派生 13 个
+- `LAVI__ALGORITHM` 默认 `random`：`selector.py` 从 `DecisionContext` 派生 13 个
   64 位算子；取第 `i` 个算子的第 `i` 位（MSB 起）填入 26 位 `omega` 的前半，取第
   `14 - i` 个算子的倒数第 `i` 位填入后半；对 `omega` 做 BLAKE2b 哈希得到 `lambda`，
   再以 `lambda % N` 选择算法。也可填具体 `name` 固定算法。配置无效时入口记录 WARNING
   并回退到 `random`。
-- `/rawtell` 在 1 个或 3 个字段时把首字段交给 `build_selector(name=...)`，为本次决策
+- `/lavi` 在 1 个或 3 个字段时把首字段交给 `build_selector(name=...)`，为本次决策
   覆盖配置选择器；`random` 也可用。1 字段未知时命令层静默沿用配置选择器，3 字段未知时
   `UnknownAlgorithmError` 转为可用算法列表并中止。`available_algorithms()` 负责注册表
   校验、过滤零权重并按 `name` 排序，供命令层列出可选项。

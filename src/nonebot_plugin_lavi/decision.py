@@ -1,4 +1,4 @@
-"""Parse ``/rawtell`` arguments and orchestrate one decision."""
+"""Parse ``/lavi`` arguments and orchestrate one decision."""
 
 from dataclasses import dataclass
 
@@ -9,7 +9,7 @@ DEFAULT_OPTIONS = ("是", "否")
 
 @dataclass(frozen=True, slots=True)
 class ParsedInvocation:
-    """One ``/rawtell`` invocation split into an optional algorithm selector."""
+    """One ``/lavi`` invocation split into an optional algorithm selector."""
 
     algorithm: str | None
     text: str

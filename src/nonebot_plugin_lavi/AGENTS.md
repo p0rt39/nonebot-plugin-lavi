@@ -1,21 +1,21 @@
-# `nonebot_plugin_rawtell` 包 — Agent 指南
+# `nonebot_plugin_lavi` 包 — Agent 指南
 
-Scope：`src/nonebot_plugin_rawtell/`（Python 包根）。先读根 `AGENTS.md`。
+Scope：`src/nonebot_plugin_lavi/`（Python 包根）。先读根 `AGENTS.md`。
 
 ## 子系统职责边界
 
-- `__init__.py`：NoneBot 集成——`__plugin_meta__`、scoped config、插件数据目录、`/rawtell`
+- `__init__.py`：NoneBot 集成——`__plugin_meta__`、scoped config、插件数据目录、`/lavi`
   matcher 注册。命令与生命周期钩子只在这里注册，实现留在子模块。
-- `config.py`：`Config` 与 `ScopedConfig`（dotenv 前缀 `RAWTELL__`）。配置默认值**必须与
+- `config.py`：`Config` 与 `ScopedConfig`（dotenv 前缀 `LAVI__`）。配置默认值**必须与
   `../../README.md` 配置表保持一致**——修改默认值的同一时间更新 README 表格。
 - `protocol.py`：跨子模块共享的领域模型、决策上下文、`Algorithm` 元数据（稳定 `name`
   与可选 `display_name`）、选择器/计算器类型、`Explanation`/`Decision` 结果、算子计量与
   种子派生。不得反向 import 插件入口或算法包。
-- `decision.py`：`/rawtell` 参数解析（算法名、单项问题、两个候选项）和选择器→算法的编排，
+- `decision.py`：`/lavi` 参数解析（算法名、单项问题、两个候选项）和选择器→算法的编排，
   产出带稳定算法名、显示名、算法算子数与可选演算步骤的 `Decision`；不依赖 NoneBot，也不
   内置占卜算法。
 - `selector.py`：算法注册表校验、可用算法枚举与固定/随机选择策略；不执行算法、不采样熵。
-- `command.py`：`/rawtell` 处理函数，接收参数与默认选择器，按字段数决定是否构建单次算法
+- `command.py`：`/lavi` 处理函数，接收参数与默认选择器，按字段数决定是否构建单次算法
   选择器并返回回复文本；不得持有 `Matcher` 或 import 插件入口。
 - `render.py`：把决策答案与参数错误渲染为适配器无关的多行展示文本；简洁与详细回复都显示
   算法显示名与结果行，详细模式空行后追加算子数量与演算步骤；不参与决策，也不采样熵。
@@ -31,7 +31,7 @@ Scope：`src/nonebot_plugin_rawtell/`（Python 包根）。先读根 `AGENTS.md`
 ## 包级约束
 
 - Startup 必须零配置可用；缺少任何配置都要优雅降级而非崩溃。
-- 配置统一走 `ScopedConfig`，dotenv 键保持 `RAWTELL__...`。
+- 配置统一走 `ScopedConfig`，dotenv 键保持 `LAVI__...`。
 - 持久化路径只从 `__init__.py` 暴露的 `data_dir` 取得，不要自行拼 `Path(__file__).parent`。
 - 子模块必须能在驱动初始化之前被 import；不要在模块级调用 `get_driver()` 的运行时属性。
 - 面向外部的辅助子系统（网络请求、渲染、定时任务）按 best-effort 处理，失败记录日志即可。

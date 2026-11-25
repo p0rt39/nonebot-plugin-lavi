@@ -8,7 +8,7 @@ Scope：`tests/`。先读根 `AGENTS.md`。
   `LOCALSTORE_PLUGIN_DATA_DIR` 指向一次性临时目录，使套件**不读写仓库 `data/` 树**。
   修改 fixture 时必须保持该隔离。
 - 异步测试在 session 级事件循环上。
-- 从 `nonebot_plugin_rawtell` 的 import 放在测试函数内部，避免在 NoneBot 初始化前 import 插件。
+- 从 `nonebot_plugin_lavi` 的 import 放在测试函数内部，避免在 NoneBot 初始化前 import 插件。
 - 用 `tmp_path` 获得隔离的持久化目录。
 
 ## 命令

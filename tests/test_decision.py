@@ -8,7 +8,7 @@ from collections.abc import Callable
 import pytest
 
 if TYPE_CHECKING:
-    from nonebot_plugin_rawtell.protocol import (
+    from nonebot_plugin_lavi.protocol import (
         Algorithm,
         Calculator,
         Explanation,
@@ -19,7 +19,7 @@ _TIMESTAMP = datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc)
 
 
 def _context(pid: int = 10) -> "DecisionContext":
-    from nonebot_plugin_rawtell.protocol import DecisionContext
+    from nonebot_plugin_lavi.protocol import DecisionContext
 
     return DecisionContext(timestamp=_TIMESTAMP, pid=pid)
 
@@ -38,7 +38,7 @@ def _algorithm_with(
     display_name: str | None = None,
     explain: "Callable[[DecisionContext], Explanation] | None" = None,
 ) -> "Algorithm":
-    from nonebot_plugin_rawtell.protocol import Algorithm
+    from nonebot_plugin_lavi.protocol import Algorithm
 
     return Algorithm(
         name=name,
@@ -61,7 +61,7 @@ def _algorithm(value: bool, *, name: str = "test") -> "Algorithm":
 def test_yes_no_question_returns_corresponding_reply(
     arguments: str, value: bool, expected: str
 ) -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     result = decide(arguments, context=_context(), selector=lambda _: _algorithm(value))
 
@@ -69,7 +69,7 @@ def test_yes_no_question_returns_corresponding_reply(
 
 
 def test_two_candidates_are_replied_verbatim() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     context = _context()
     arguments = "  Earl-Grey　咖啡！  "
@@ -82,7 +82,7 @@ def test_two_candidates_are_replied_verbatim() -> None:
 
 
 def test_repeated_candidates_stay_in_two_option_mode() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     context = _context()
     arguments = "茶\t茶"
@@ -111,7 +111,7 @@ def test_parse_invocation_splits_by_field_count(
     text: str,
     require_algorithm: bool,
 ) -> None:
-    from nonebot_plugin_rawtell.decision import parse_invocation
+    from nonebot_plugin_lavi.decision import parse_invocation
 
     invocation = parse_invocation(arguments)
 
@@ -121,7 +121,7 @@ def test_parse_invocation_splits_by_field_count(
 
 
 def test_single_field_invocation_keeps_yes_no_options() -> None:
-    from nonebot_plugin_rawtell.decision import parse_options, parse_invocation
+    from nonebot_plugin_lavi.decision import parse_options, parse_invocation
 
     invocation = parse_invocation("trial")
 
@@ -129,7 +129,7 @@ def test_single_field_invocation_keeps_yes_no_options() -> None:
 
 
 def test_three_field_invocation_keeps_two_candidates() -> None:
-    from nonebot_plugin_rawtell.decision import parse_options, parse_invocation
+    from nonebot_plugin_lavi.decision import parse_options, parse_invocation
 
     invocation = parse_invocation("trial 红茶 咖啡")
 
@@ -137,7 +137,7 @@ def test_three_field_invocation_keeps_two_candidates() -> None:
 
 
 def test_selector_picks_one_algorithm_for_the_shared_context() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     def run(pid: int) -> str:
         context = _context(pid)
@@ -174,9 +174,9 @@ def test_selector_picks_one_algorithm_for_the_shared_context() -> None:
 
 
 def test_decision_reports_algorithm_and_algorithm_operator_count() -> None:
-    from nonebot_plugin_rawtell.decision import decide
-    from nonebot_plugin_rawtell.protocol import derive_algorithm_bits
-    from nonebot_plugin_rawtell.selector import derive_operators
+    from nonebot_plugin_lavi.decision import decide
+    from nonebot_plugin_lavi.protocol import derive_algorithm_bits
+    from nonebot_plugin_lavi.selector import derive_operators
 
     context = _context()
 
@@ -205,7 +205,7 @@ def test_decision_reports_algorithm_and_algorithm_operator_count() -> None:
 
 
 def test_decision_keeps_stable_name_and_uses_display_name_for_replies() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     algorithm = _algorithm_with(
         _constant(True),
@@ -220,8 +220,8 @@ def test_decision_keeps_stable_name_and_uses_display_name_for_replies() -> None:
 
 
 def test_trace_uses_the_explanation_without_calling_calculate() -> None:
-    from nonebot_plugin_rawtell.decision import decide
-    from nonebot_plugin_rawtell.protocol import Explanation, derive_algorithm_bits
+    from nonebot_plugin_lavi.decision import decide
+    from nonebot_plugin_lavi.protocol import Explanation, derive_algorithm_bits
 
     context = _context()
     calculate_calls: list["DecisionContext"] = []
@@ -272,7 +272,7 @@ def test_trace_uses_the_explanation_without_calling_calculate() -> None:
 
 
 def test_capture_context_samples_process_and_utc_time() -> None:
-    from nonebot_plugin_rawtell.protocol import capture_context
+    from nonebot_plugin_lavi.protocol import capture_context
 
     context = capture_context()
 
@@ -285,7 +285,7 @@ def test_capture_context_samples_process_and_utc_time() -> None:
 
 
 def test_calculator_error_propagates() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     def fail(_: "DecisionContext") -> bool:
         raise ValueError("calculator failed")
@@ -297,7 +297,7 @@ def test_calculator_error_propagates() -> None:
 
 
 def test_selector_error_propagates() -> None:
-    from nonebot_plugin_rawtell.decision import decide
+    from nonebot_plugin_lavi.decision import decide
 
     def fail(_: "DecisionContext") -> "Algorithm":
         raise ValueError("selector failed")

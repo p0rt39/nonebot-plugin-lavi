@@ -1,4 +1,4 @@
-"""The /rawtell command handler, independent of NoneBot matchers."""
+"""The /lavi command handler, independent of NoneBot matchers."""
 
 from .render import render_answer, render_detailed, render_unknown_algorithm
 from .decision import decide, parse_invocation
@@ -12,9 +12,7 @@ def _available_choices() -> tuple[str, ...]:
     )
 
 
-def handle_rawtell(
-    arguments: str, *, selector: Selector, detailed: bool = False
-) -> str:
+def handle_lavi(arguments: str, *, selector: Selector, detailed: bool = False) -> str:
     """Resolve an optional per-command algorithm and render one decision."""
     request = parse_invocation(arguments)
     if request.algorithm is not None:

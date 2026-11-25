@@ -1,10 +1,10 @@
-"""rAwTell plugin configuration model."""
+"""LaVI plugin configuration model."""
 
 from pydantic import BaseModel
 
 
 class ScopedConfig(BaseModel):
-    """Settings under the ``RAWTELL__`` dotenv scope."""
+    """Settings under the ``LAVI__`` dotenv scope."""
 
     algorithm: str = "random"
     """Registered algorithm name, or ``"random"`` to choose per decision."""
@@ -16,4 +16,4 @@ class ScopedConfig(BaseModel):
 class Config(BaseModel):
     """Top-level config holder for NoneBot plugin loading."""
 
-    rawtell: ScopedConfig = ScopedConfig()
+    lavi: ScopedConfig = ScopedConfig()

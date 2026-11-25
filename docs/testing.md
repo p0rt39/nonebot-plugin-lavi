@@ -29,7 +29,7 @@ prek run --all-files
 
 - `conftest.py`：注册 OneBot V11 适配器，用 `nonebot.load_from_toml("pyproject.toml")` 加载插件。
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
-- `test_command.py`：`handle_rawtell()` 的字段数分派——1 字段算法名与未知名称静默回退、
+- `test_command.py`：`handle_lavi()` 的字段数分派——1 字段算法名与未知名称静默回退、
   2 字段保持两个候选、3 字段算法名加候选与未知名称中止、4 个及以上字段保持原行为，
   以及命令参数对默认选择器的覆盖。
 - `test_decision.py`：二元决策核心契约——`parse_invocation()` 的字段数分派与
@@ -47,11 +47,11 @@ prek run --all-files
   `available_algorithms()` 的过滤与排序、未知/重名算法拒绝、种子域分离。
 - `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤，
   以及未知算法时的可用算法列表；不依赖字体宽度或边框。
-- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/rawtell` 的 nonebug 命令交互测试
+- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/lavi` 的 nonebug 命令交互测试
   （单字段算法覆盖、三字段未知算法中止、详细模式输出与完整换行回复）。
 
 `test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。
-`test_command.py` 直接调用 `command.handle_rawtell()`。命令级测试通过 monkeypatch 替换
+`test_command.py` 直接调用 `command.handle_lavi()`。命令级测试通过 monkeypatch 替换
 插件入口的 `algorithm_selector` 或 `command.capture_context`，使回复可精确断言，同时保留
 真实的命令解析与 `finish()` 路径。
 
@@ -64,4 +64,4 @@ prek run --all-files
 使套件永远不读写仓库 `data/` 树。`.env.test` 中的 `LOCALSTORE_USE_CWD=true` 会让 localstore
 回退到仓库目录，因此隔离的根因是前置的临时目录设置，不是 `.env` 的加载顺序。
 
-从 `nonebot_plugin_rawtell` 的 import 放在测试函数内部，避免在 NoneBot 初始化前 import 插件。
+从 `nonebot_plugin_lavi` 的 import 放在测试函数内部，避免在 NoneBot 初始化前 import 插件。

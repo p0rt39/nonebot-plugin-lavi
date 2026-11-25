@@ -1,6 +1,6 @@
-# rAwTell — Agent 指南（根）
+# LaVI — Agent 指南（根）
 
-`nonebot-plugin-rawtell` 是一个 NoneBot2 插件。当前已实现 `/rawtell` 二元决策命令、
+`nonebot-plugin-lavi` 是一个 NoneBot2 插件。当前已实现 `/lavi` 二元决策命令、
 可插拔算法注册表与算法选择策略；决策历史与持久化尚未实现。
 
 本文件只包含**全仓库通用**的指令，以及**阅读各级子目录特化 AGENTS.md 的要求**。
@@ -9,7 +9,7 @@
 
 在修改任何文件**之前**，先阅读与该目录对应的各级 `AGENTS.md`（从本根文件向下逐级深入）：
 
-- 包级约束：`src/nonebot_plugin_rawtell/AGENTS.md`
+- 包级约束：`src/nonebot_plugin_lavi/AGENTS.md`
 - 测试：`tests/AGENTS.md`
 
 深层 `AGENTS.md` 只补充其所在子树的定向约束，不重复上层内容；若上下层表述冲突，以更具体（更深）者为准，
@@ -41,7 +41,7 @@ modify -> ruff -> basedpyright -> focused pytest -> (full pytest) -> [本地] �
 - 不要阻塞事件循环；阻塞型 IO 用 `asyncio.to_thread` 等方式移出事件循环。
 - 面向外部的辅助子系统按 best-effort 处理，失败要记录日志且不应让主插件崩溃。
 - `matcher.finish()` 会抛 NoneBot matcher 异常，不要用宽泛的 `except Exception` 包住它。
-- 新的用户可见配置放 `ScopedConfig`，dotenv 键保持 `RAWTELL__...`，并同步更新 README 配置表。
+- 新的用户可见配置放 `ScopedConfig`，dotenv 键保持 `LAVI__...`，并同步更新 README 配置表。
 - 对说明不足的事项向用户提问澄清——尤其是行为、兼容性、数据安全、测试范围或发布流程。
 - 不要随意删除不受版本控制的文件；删除任何未跟踪、被忽略、生成物或本地环境文件前，须向用户明确二次确认。
 
@@ -49,7 +49,7 @@ modify -> ruff -> basedpyright -> focused pytest -> (full pytest) -> [本地] �
 
 详见 `docs/publishing.md`；要点：
 
-- 项目名 `nonebot-plugin-rawtell`（词间 `-`），模块名 `nonebot_plugin_rawtell`（词间 `_`）。
+- 项目名 `nonebot-plugin-lavi`（词间 `-`），模块名 `nonebot_plugin_lavi`（词间 `_`）。
 - 依赖用宽松区间 `>=X.Y,<Z.0`；运行期 import 的第三方库必须写进 `pyproject.toml` 的 `dependencies`。
 - 运行期数据读写经 `nonebot-plugin-localstore`，不用 `open()` / `os.getcwd()` 直接定位插件数据。
 - 插件须零配置可加载；缺少配置时优雅降级。

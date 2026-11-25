@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 import pytest
 
 if TYPE_CHECKING:
-    from nonebot_plugin_rawtell.protocol import DecisionContext
+    from nonebot_plugin_lavi.protocol import DecisionContext
 
 _TIMESTAMP = datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc)
 
 
 def _context(nonce: int) -> "DecisionContext":
-    from nonebot_plugin_rawtell.protocol import DecisionContext
+    from nonebot_plugin_lavi.protocol import DecisionContext
 
     return DecisionContext(
         timestamp=_TIMESTAMP,
@@ -24,7 +24,7 @@ def _context(nonce: int) -> "DecisionContext":
 
 
 def test_registry_is_explicit_and_valid() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     names = [algorithm.name for algorithm in ALGORITHMS]
 
@@ -35,7 +35,7 @@ def test_registry_is_explicit_and_valid() -> None:
 
 
 def test_each_algorithm_is_deterministic_for_the_same_context() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     context = _context(7)
 
@@ -44,7 +44,7 @@ def test_each_algorithm_is_deterministic_for_the_same_context() -> None:
 
 
 def test_each_algorithm_uses_context_entropy() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     for algorithm in ALGORITHMS:
         results = {algorithm.calculate(_context(nonce)) for nonce in range(64)}
@@ -53,7 +53,7 @@ def test_each_algorithm_uses_context_entropy() -> None:
 
 
 def test_algorithm_bits_are_derived_from_the_shared_context() -> None:
-    from nonebot_plugin_rawtell.protocol import derive_algorithm_bits
+    from nonebot_plugin_lavi.protocol import derive_algorithm_bits
 
     def derive(context: "DecisionContext") -> tuple[int, ...]:
         return derive_algorithm_bits(
@@ -73,7 +73,7 @@ def test_algorithm_bits_are_derived_from_the_shared_context() -> None:
 
 
 def test_algorithm_operators_are_derived_from_the_shared_context() -> None:
-    from nonebot_plugin_rawtell.protocol import (
+    from nonebot_plugin_lavi.protocol import (
         derive_seed,
         derive_algorithm_operators,
     )
@@ -100,7 +100,7 @@ def test_algorithm_operators_are_derived_from_the_shared_context() -> None:
 
 
 def test_algorithm_operators_validate_stage_and_count() -> None:
-    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
+    from nonebot_plugin_lavi.protocol import derive_algorithm_operators
 
     with pytest.raises(ValueError, match="stage"):
         derive_algorithm_operators(
@@ -122,7 +122,7 @@ def test_algorithm_operators_validate_stage_and_count() -> None:
 
 
 def test_trial_splits_principal_share_and_ballot() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.trial import split_operator
+    from nonebot_plugin_lavi.decider_algorithms.trial import split_operator
 
     operator = (0xDEADBEEF << 32) | 0x01234567
 
@@ -133,7 +133,7 @@ def test_trial_splits_principal_share_and_ballot() -> None:
 
 
 def test_trial_principal_is_bitwise_majority_and_never_zero() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.trial import principal
+    from nonebot_plugin_lavi.decider_algorithms.trial import principal
 
     shares = [0] * 13
     for index in range(7):
@@ -153,7 +153,7 @@ def test_trial_principal_is_bitwise_majority_and_never_zero() -> None:
 
 
 def test_trial_vote_is_inner_product_parity() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.trial import vote
+    from nonebot_plugin_lavi.decider_algorithms.trial import vote
 
     assert vote(0b1, 0b0) == 0
     assert vote(0b1, 0b1) == 1
@@ -168,7 +168,7 @@ def test_trial_vote_is_inner_product_parity() -> None:
 def test_trial_verdict_is_a_thirteen_vote_majority() -> None:
     from itertools import product
 
-    from nonebot_plugin_rawtell.decider_algorithms.trial import verdict
+    from nonebot_plugin_lavi.decider_algorithms.trial import verdict
 
     assert verdict([1] * 7 + [0] * 6) is True
     assert verdict([1] * 6 + [0] * 7) is False
@@ -176,7 +176,7 @@ def test_trial_verdict_is_a_thirteen_vote_majority() -> None:
 
 
 def test_trial_decide_uses_the_ballot_majority() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.trial import decide, principal
+    from nonebot_plugin_lavi.decider_algorithms.trial import decide, principal
 
     affirmative = [(1 << 32) | 1] * 7 + [(1 << 32) | 0] * 6
     negative = [(1 << 32) | 1] * 6 + [(1 << 32) | 0] * 7
@@ -188,8 +188,8 @@ def test_trial_decide_uses_the_ballot_majority() -> None:
 
 
 def test_trial_calculate_matches_derived_operators() -> None:
-    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
-    from nonebot_plugin_rawtell.decider_algorithms.trial import decide, calculate
+    from nonebot_plugin_lavi.protocol import derive_algorithm_operators
+    from nonebot_plugin_lavi.decider_algorithms.trial import decide, calculate
 
     context = _context(1)
     operators = derive_algorithm_operators(
@@ -204,7 +204,7 @@ def test_trial_calculate_matches_derived_operators() -> None:
 
 
 def test_trial_is_registered() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     trial = {algorithm.name: algorithm for algorithm in ALGORITHMS}["trial"]
 
@@ -213,8 +213,8 @@ def test_trial_is_registered() -> None:
 
 
 def test_trial_operator_purpose_is_separate_from_selector() -> None:
-    from nonebot_plugin_rawtell.protocol import derive_algorithm_operators
-    from nonebot_plugin_rawtell.selector import derive_operators
+    from nonebot_plugin_lavi.protocol import derive_algorithm_operators
+    from nonebot_plugin_lavi.selector import derive_operators
 
     context = _context(1)
 
@@ -230,7 +230,7 @@ def test_trial_operator_purpose_is_separate_from_selector() -> None:
 
 
 def test_dayan_change_removals_follow_canonical_counts() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.dayan import (
+    from nonebot_plugin_lavi.decider_algorithms.dayan import (
         first_change_removal,
         later_change_removal,
     )
@@ -249,7 +249,7 @@ def test_dayan_line_values_have_canonical_distribution_and_balance() -> None:
     from itertools import product
     from collections import Counter
 
-    from nonebot_plugin_rawtell.decider_algorithms.dayan import is_yang, cast_line
+    from nonebot_plugin_lavi.decider_algorithms.dayan import is_yang, cast_line
 
     lines = [cast_line(marks) for marks in product((0, 1), repeat=4)]
 
@@ -258,7 +258,7 @@ def test_dayan_line_values_have_canonical_distribution_and_balance() -> None:
 
 
 def test_dayan_cast_hexagram_preserves_line_order() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.dayan import cast_hexagram
+    from nonebot_plugin_lavi.decider_algorithms.dayan import cast_hexagram
 
     marks = (
         0,
@@ -302,7 +302,7 @@ def test_dayan_cast_hexagram_preserves_line_order() -> None:
 def test_dayan_answers_from_yang_line_parity(
     monkeypatch, lines: tuple[int, ...], expected: bool
 ) -> None:
-    import nonebot_plugin_rawtell.decider_algorithms.dayan as dayan
+    import nonebot_plugin_lavi.decider_algorithms.dayan as dayan
 
     line_marks = {
         9: (0, 0, 0, 0),
@@ -322,7 +322,7 @@ def test_dayan_answers_from_yang_line_parity(
 
 
 def test_geomancy_derives_the_reference_shield_chart() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.geomancy import build_chart
+    from nonebot_plugin_lavi.decider_algorithms.geomancy import build_chart
 
     chart = build_chart((0b1111, 0b0101, 0b0110, 0b1000))
 
@@ -337,7 +337,7 @@ def test_geomancy_derives_the_reference_shield_chart() -> None:
 def test_geomancy_judge_is_always_even() -> None:
     from itertools import product
 
-    from nonebot_plugin_rawtell.decider_algorithms.geomancy import (
+    from nonebot_plugin_lavi.decider_algorithms.geomancy import (
         FIGURES,
         build_chart,
     )
@@ -350,7 +350,7 @@ def test_geomancy_judge_is_always_even() -> None:
 
 
 def test_geomancy_has_four_stable_and_four_mobile_judges() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.geomancy import FIGURES
+    from nonebot_plugin_lavi.decider_algorithms.geomancy import FIGURES
 
     judges = {
         pattern: stable
@@ -363,7 +363,7 @@ def test_geomancy_has_four_stable_and_four_mobile_judges() -> None:
 
 
 def test_geomancy_answers_from_the_judge_quality(monkeypatch) -> None:
-    import nonebot_plugin_rawtell.decider_algorithms.geomancy as geomancy
+    import nonebot_plugin_lavi.decider_algorithms.geomancy as geomancy
 
     stable_marks = (1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0)
     mobile_marks = (1, 1, 1, 1) + (0, 0, 0, 0) * 3
@@ -383,7 +383,7 @@ def test_geomancy_answers_from_the_judge_quality(monkeypatch) -> None:
 
 
 def test_obi_letters_and_verdicts() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import (
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import (
         ETAWA,
         OKANA,
         ALAFIA,
@@ -408,7 +408,7 @@ def test_obi_letters_and_verdicts() -> None:
 
 
 def test_obi_and_ifa_casts_preserve_mark_order() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import cast_ifa, cast_obi
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import cast_ifa, cast_obi
 
     assert cast_obi((1, 0, 1, 1)) == 3
     assert cast_ifa((1, 0, 1, 0, 0, 0, 0, 0)) == 0b00000101
@@ -425,13 +425,13 @@ def test_obi_and_ifa_casts_preserve_mark_order() -> None:
     ],
 )
 def test_ifa_verdict_uses_mark_parity(odu: int, expected: bool) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import ifa_verdict
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import ifa_verdict
 
     assert ifa_verdict(odu) is expected
 
 
 def _use_stage_bits(monkeypatch, stages: dict[str, tuple[int, ...]]) -> list[str]:
-    import nonebot_plugin_rawtell.decider_algorithms.obi_ifa as obi_ifa
+    import nonebot_plugin_lavi.decider_algorithms.obi_ifa as obi_ifa
 
     calls: list[str] = []
 
@@ -453,7 +453,7 @@ def _use_stage_bits(monkeypatch, stages: dict[str, tuple[int, ...]]) -> list[str
 def test_obi_ifa_first_eyeife_defers_to_ifa(
     monkeypatch, ifa_marks: tuple[int, ...], expected: bool
 ) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import calculate
 
     stages = _use_stage_bits(
         monkeypatch,
@@ -477,7 +477,7 @@ def test_obi_ifa_first_eyeife_defers_to_ifa(
 def test_obi_ifa_second_eyeife_confirms_first_obi(
     monkeypatch, first_marks: tuple[int, ...], expected: bool
 ) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import calculate
 
     stages = _use_stage_bits(
         monkeypatch,
@@ -504,7 +504,7 @@ def test_obi_ifa_true_ifa_confirms_first_obi(
     second_marks: tuple[int, ...],
     expected: bool,
 ) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import calculate
 
     stages = _use_stage_bits(
         monkeypatch,
@@ -520,7 +520,7 @@ def test_obi_ifa_true_ifa_confirms_first_obi(
 
 
 def test_obi_ifa_false_ifa_restarts_the_round(monkeypatch) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import calculate
 
     stages = _use_stage_bits(
         monkeypatch,
@@ -544,7 +544,7 @@ def test_obi_ifa_false_ifa_restarts_the_round(monkeypatch) -> None:
 
 
 def test_obi_ifa_restart_uses_the_new_first_verdict(monkeypatch) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import calculate
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import calculate
 
     stages = _use_stage_bits(
         monkeypatch,
@@ -568,8 +568,8 @@ def test_obi_ifa_restart_uses_the_new_first_verdict(monkeypatch) -> None:
 
 
 def test_count_operators_tracks_builtin_algorithm_usage() -> None:
-    from nonebot_plugin_rawtell.protocol import count_operators
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.protocol import count_operators
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     expected = {"dayan": 24, "geomancy": 16, "trial": 13}
 
@@ -584,8 +584,8 @@ def test_count_operators_tracks_builtin_algorithm_usage() -> None:
 
 
 def test_each_algorithm_explanation_matches_its_calculation() -> None:
-    from nonebot_plugin_rawtell.protocol import Explanation, count_operators
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.protocol import Explanation, count_operators
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     for algorithm in ALGORITHMS:
         assert algorithm.explain is not None
@@ -602,7 +602,7 @@ def test_each_algorithm_explanation_matches_its_calculation() -> None:
 
 
 def test_builtin_algorithms_expose_friendly_display_names() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms import ALGORITHMS
+    from nonebot_plugin_lavi.decider_algorithms import ALGORITHMS
 
     labels = {algorithm.name: algorithm.label for algorithm in ALGORITHMS}
 
@@ -613,7 +613,7 @@ def test_builtin_algorithms_expose_friendly_display_names() -> None:
 
 
 def test_dayan_explanation_lists_every_line_and_the_parity_verdict() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.dayan import explain
+    from nonebot_plugin_lavi.decider_algorithms.dayan import explain
 
     result = explain(_context(7))
     line_steps = [step for step in result.steps if "爻：" in step]
@@ -626,7 +626,7 @@ def test_dayan_explanation_lists_every_line_and_the_parity_verdict() -> None:
 
 
 def test_geomancy_explanation_lists_every_chart_layer() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.geomancy import explain
+    from nonebot_plugin_lavi.decider_algorithms.geomancy import explain
 
     result = explain(_context(7))
     labels = [step.split("：", 1)[0] for step in result.steps]
@@ -636,7 +636,7 @@ def test_geomancy_explanation_lists_every_chart_layer() -> None:
 
 
 def test_trial_explanation_lists_principal_and_ballots() -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.trial import explain
+    from nonebot_plugin_lavi.decider_algorithms.trial import explain
 
     result = explain(_context(7))
 
@@ -647,7 +647,7 @@ def test_trial_explanation_lists_principal_and_ballots() -> None:
 
 
 def test_obi_ifa_explanation_records_rounds_and_restarts(monkeypatch) -> None:
-    from nonebot_plugin_rawtell.decider_algorithms.obi_ifa import explain
+    from nonebot_plugin_lavi.decider_algorithms.obi_ifa import explain
 
     stages = _use_stage_bits(
         monkeypatch,

@@ -1,4 +1,4 @@
-"""Cross-module data models, seed derivation and bit derivation for rAwTell."""
+"""Cross-module data models, seed derivation and bit derivation for LaVI."""
 
 import os
 import hashlib
@@ -109,7 +109,7 @@ class OperatorTally:
 
 
 _operator_tally: ContextVar[OperatorTally | None] = ContextVar(
-    "rawtell_operator_tally", default=None
+    "lavi_operator_tally", default=None
 )
 
 
@@ -151,7 +151,7 @@ def derive_seed(context: DecisionContext, *, purpose: str) -> int:
             str(context.nonce3),
         )
     )
-    digest = hashlib.blake2b(material.encode(), digest_size=8, person=b"rawtell")
+    digest = hashlib.blake2b(material.encode(), digest_size=8, person=b"lavi")
     tally = _operator_tally.get()
     if tally is not None:
         tally.increment()
