@@ -5,22 +5,24 @@ Scope：`src/nonebot_plugin_lavi/`（Python 包根）。先读根 `AGENTS.md`。
 ## 子系统职责边界
 
 - `__init__.py`：NoneBot 集成——`__plugin_meta__`、scoped config、插件数据目录、`/lavi`
-  matcher 注册。命令与生命周期钩子只在这里注册，实现留在子模块。
-- `config.py`：`Config`、`ScopedConfig` 与 `TextConfig`（dotenv 前缀 `LAVI__`，文案模板在
-  `LAVI__TEXT__...`）。模板的必填占位符由 Pydantic 校验。配置默认值**必须与
-  `../../README.md` 配置表保持一致**——修改默认值的同一时间更新 README 表格。
+  与 `/lavi-review` matcher 注册。命令与生命周期钩子只在这里注册，实现留在子模块。
+- `config.py`：`Config`、`ScopedConfig`（含 `history_limit`）与 `TextConfig`（dotenv 前缀
+  `LAVI__`，文案模板在 `LAVI__TEXT__...`）。模板的必填占位符由 Pydantic 校验。配置默认值
+  **必须与 `../../README.md` 配置表保持一致**——修改默认值的同一时间更新 README 表格。
 - `protocol.py`：跨子模块共享的领域模型、决策上下文、`Algorithm` 元数据（稳定 `name`
-  与可选 `display_name`）、选择器/计算器类型、`Explanation`/`Decision` 结果、算子计量与
-  种子派生。不得反向 import 插件入口或算法包。
+  与可选 `display_name`）、选择器/计算器类型、`Explanation`/`Decision` 结果、持久化用
+  `DecisionRecord`、算子计量与种子派生。不得反向 import 插件入口或算法包。
 - `decision.py`：`/lavi` 参数解析（算法名、单项问题、两个候选项）和选择器→算法的编排，
-  产出带稳定算法名、显示名、算法算子数与可选演算步骤的 `Decision`；不依赖 NoneBot，也不
-  内置占卜算法。
+  产出带稳定算法名、版本、显示名、候选与胜方、算法算子数与可选演算步骤的 `Decision`；
+  不依赖 NoneBot，也不内置占卜算法。
 - `selector.py`：算法注册表校验、可用算法枚举与固定/随机选择策略；不执行算法、不采样熵。
-- `command.py`：`/lavi` 处理函数，接收参数与默认选择器，按字段数决定是否构建单次算法
-  选择器并返回回复文本；不得持有 `Matcher` 或 import 插件入口。
-- `render.py`：把决策答案与参数错误渲染为适配器无关的多行展示文本；行模板来自
+- `command.py`：`/lavi` 与 `/lavi-review` 处理函数，接收参数、历史存储与默认选择器，按
+  字段数决定是否构建单次算法选择器并返回回复文本；不得持有 `Matcher` 或 import 插件入口。
+- `storage.py`：把最近 N 条 `DecisionRecord` 原子滚动保存到 `data_dir/history.json`；
+  跨进程文件锁、整文件校验、写失败不覆盖原件；查询只读当前窗口。
+- `render.py`：把决策答案、参数错误与复查结果渲染为适配器无关的多行展示文本；行模板来自
   `TextConfig`，简洁与详细回复都显示算法显示名与结果行，详细模式空行后追加算子数量与
-  演算步骤；不参与决策，也不采样熵。
+  演算步骤；复查依次显示原记录、可选复算块与核对状态；不参与决策，也不采样熵。
 - `decider_algorithms/`：每个算法一个文件，导出 `ALGORITHM`；`__init__.py` 是显式注册表。
   算法必须同步、纯函数化，只读 `DecisionContext`，不得访问 NoneBot、网络、文件或全局
   `random`。算法可提供 `explain(context)` 返回 `Explanation(answer, steps)`，并挂到

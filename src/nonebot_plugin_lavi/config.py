@@ -77,6 +77,24 @@ class TextConfig(BaseModel):
     )
     """Available algorithm list line; must contain ``{available}``."""
 
+    record_id: str = Field(default="记录 ID：{record_id}", min_length=1)
+    """Record identifier line; must contain ``{record_id}``."""
+
+    record_time: str = Field(default="决策时间：{timestamp}", min_length=1)
+    """Record time line; must contain ``{timestamp}``."""
+
+    record_algorithm: str = Field(default="原算法：{algorithm}", min_length=1)
+    """Record algorithm line; must contain ``{algorithm}``."""
+
+    record_options: str = Field(default="原候选：{options}", min_length=1)
+    """Record candidate line; must contain ``{options}``."""
+
+    record_result: str = Field(default="原结果：{result}", min_length=1)
+    """Record result line; must contain ``{result}``."""
+
+    record_count: str = Field(default="原算子数量：{operator_count}", min_length=1)
+    """Record operator-count line; must contain ``{operator_count}``."""
+
     unavailable: str = Field(default="决策算法暂时不可用，请稍后再试。", min_length=1)
     """Reply used when the command handler fails unexpectedly."""
 
@@ -85,6 +103,48 @@ class TextConfig(BaseModel):
 
     negative: str = Field(default="否", min_length=1)
     """Reply for a negative yes/no decision."""
+
+    history_disabled_decision: str = Field(
+        default="历史记录已关闭，本次决策无法复查。",
+        min_length=1,
+    )
+    """Notice appended when history is paused for a new decision."""
+
+    history_write_failed: str = Field(
+        default="记录未保存，本次决策无法复查。",
+        min_length=1,
+    )
+    """Notice appended when the decision could not be persisted."""
+
+    review_usage: str = Field(default="用法：/lavi-review <记录ID>", min_length=1)
+    """Reply for a malformed review identifier."""
+
+    history_disabled: str = Field(default="历史记录已关闭。", min_length=1)
+    """Reply when history is paused and a review is requested."""
+
+    record_missing: str = Field(default="记录不存在或已滚动移除。", min_length=1)
+    """Reply when the identifier is valid but no record remains."""
+
+    history_unavailable: str = Field(
+        default="历史记录暂时不可用，请稍后再试。",
+        min_length=1,
+    )
+    """Reply when the history file cannot be read."""
+
+    review_version_unavailable: str = Field(
+        default="无法复算：原算法版本不可用。",
+        min_length=1,
+    )
+    """Review status when the recorded algorithm version is gone."""
+
+    review_match: str = Field(default="复查一致。", min_length=1)
+    """Review status when the replay matches the recorded result."""
+
+    review_mismatch: str = Field(default="复查不一致。", min_length=1)
+    """Review status when the replay differs from the recorded result."""
+
+    review_failed: str = Field(default="复算失败。", min_length=1)
+    """Review status when replaying the algorithm raised."""
 
     @_field_validator("header")
     @classmethod
@@ -123,7 +183,59 @@ class TextConfig(BaseModel):
             placeholder="available",
         )
 
-    @_field_validator("unavailable", "affirmative", "negative")
+    @_field_validator("record_id")
+    @classmethod
+    def _check_record_id(cls, value: str) -> str:
+        return _validate_template(value, field="record_id", placeholder="record_id")
+
+    @_field_validator("record_time")
+    @classmethod
+    def _check_record_time(cls, value: str) -> str:
+        return _validate_template(value, field="record_time", placeholder="timestamp")
+
+    @_field_validator("record_algorithm")
+    @classmethod
+    def _check_record_algorithm(cls, value: str) -> str:
+        return _validate_template(
+            value,
+            field="record_algorithm",
+            placeholder="algorithm",
+        )
+
+    @_field_validator("record_options")
+    @classmethod
+    def _check_record_options(cls, value: str) -> str:
+        return _validate_template(value, field="record_options", placeholder="options")
+
+    @_field_validator("record_result")
+    @classmethod
+    def _check_record_result(cls, value: str) -> str:
+        return _validate_template(value, field="record_result", placeholder="result")
+
+    @_field_validator("record_count")
+    @classmethod
+    def _check_record_count(cls, value: str) -> str:
+        return _validate_template(
+            value,
+            field="record_count",
+            placeholder="operator_count",
+        )
+
+    @_field_validator(
+        "unavailable",
+        "affirmative",
+        "negative",
+        "history_disabled_decision",
+        "history_write_failed",
+        "review_usage",
+        "history_disabled",
+        "record_missing",
+        "history_unavailable",
+        "review_version_unavailable",
+        "review_match",
+        "review_mismatch",
+        "review_failed",
+    )
     @classmethod
     def _check_not_blank_fields(cls, value: str) -> str:
         return _validate_not_blank(value)
@@ -137,6 +249,9 @@ class ScopedConfig(BaseModel):
 
     detailed: bool = False
     """Show the selected decider, operator count and calculation steps."""
+
+    history_limit: int = Field(default=1000, ge=0)
+    """Recent decisions kept per data directory; ``0`` pauses history access."""
 
     text: TextConfig = Field(default_factory=TextConfig)
     """Customizable reply copy under the ``LAVI__TEXT__`` scope."""

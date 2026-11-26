@@ -92,6 +92,9 @@ def test_repeated_candidates_stay_in_two_option_mode() -> None:
 
     assert yes.answer == "茶"
     assert no.answer == "茶"
+    assert yes.options == ("茶", "茶")
+    assert yes.affirmative_wins is True
+    assert no.affirmative_wins is False
 
 
 @pytest.mark.parametrize(
@@ -154,6 +157,8 @@ def test_decision_uses_configured_reply_words() -> None:
     )
 
     assert result.answer == "不好"
+    assert result.options == ("好", "不好")
+    assert result.affirmative_wins is False
 
 
 def test_selector_picks_one_algorithm_for_the_shared_context() -> None:
@@ -219,7 +224,10 @@ def test_decision_reports_algorithm_and_algorithm_operator_count() -> None:
     result = decide("红茶 咖啡", context=context, selector=selector)
 
     assert result.answer == "红茶"
+    assert result.options == ("红茶", "咖啡")
+    assert result.affirmative_wins is True
     assert result.algorithm == "probe"
+    assert result.algorithm_version == 1
     assert result.display_name == "probe"
     assert result.operator_count == 5
 

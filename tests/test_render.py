@@ -142,3 +142,146 @@ def test_doubled_braces_render_literally() -> None:
         render_answer("是", decider="大衍", text=text)
         == "{LaVI} 「大衍」\n✨ 决断结果：「是」"
     )
+
+
+def _review_record(*, affirmative_wins: bool = True):
+    from uuid import UUID
+    from datetime import datetime, timezone
+
+    from nonebot_plugin_lavi.protocol import DecisionRecord, DecisionContext
+
+    context = DecisionContext(
+        timestamp=datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc),
+        pid=10,
+        nonce1=1,
+        nonce2=2,
+        nonce3=3,
+    )
+    return DecisionRecord(
+        record_id=UUID("00000000-0000-4000-8000-000000000001"),
+        context=context,
+        options=("红茶", "咖啡"),
+        algorithm="trial",
+        algorithm_version=1,
+        display_name="裁判",
+        affirmative_wins=affirmative_wins,
+        operator_count=13,
+    )
+
+
+def test_review_shows_original_record_replay_and_status() -> None:
+    from nonebot_plugin_lavi.render import render_review
+    from nonebot_plugin_lavi.protocol import Decision
+
+    replay = Decision(
+        options=("红茶", "咖啡"),
+        affirmative_wins=True,
+        algorithm="trial",
+        algorithm_version=1,
+        display_name="裁判",
+        operator_count=13,
+        steps=("主算子：0x00000001", "肯定票：7/13"),
+    )
+
+    result = render_review(_review_record(), replay=replay, status="复查一致。")
+
+    assert result == (
+        "记录 ID：00000000-0000-4000-8000-000000000001\n"
+        "决策时间：2024-05-06T07:08:09+00:00\n"
+        "原算法：裁判（trial v1）\n"
+        "原候选：1「红茶」 / 2「咖啡」\n"
+        "原结果：第 1 项「红茶」\n"
+        "原算子数量：13\n"
+        "\n"
+        "🔮 决断仪式：「裁判」\n"
+        "✨ 决断结果：「红茶」\n"
+        "\n"
+        "📊 算子数量：13\n"
+        "📜 演算过程：\n"
+        "主算子：0x00000001\n"
+        "肯定票：7/13\n"
+        "复查一致。"
+    )
+
+
+def test_review_omits_the_replay_block_when_replay_is_missing() -> None:
+    from nonebot_plugin_lavi.render import render_review
+
+    result = render_review(
+        _review_record(affirmative_wins=False),
+        replay=None,
+        status="无法复算：原算法版本不可用。",
+    )
+
+    assert result == (
+        "记录 ID：00000000-0000-4000-8000-000000000001\n"
+        "决策时间：2024-05-06T07:08:09+00:00\n"
+        "原算法：裁判（trial v1）\n"
+        "原候选：1「红茶」 / 2「咖啡」\n"
+        "原结果：第 2 项「咖啡」\n"
+        "原算子数量：13\n"
+        "无法复算：原算法版本不可用。"
+    )
+
+
+def test_review_collapses_dynamic_values_to_one_line() -> None:
+    from uuid import UUID
+    from datetime import datetime, timezone
+
+    from nonebot_plugin_lavi.render import render_review
+    from nonebot_plugin_lavi.protocol import DecisionRecord, DecisionContext
+
+    context = DecisionContext(
+        timestamp=datetime(2024, 5, 6, 7, 8, 9, tzinfo=timezone.utc),
+        pid=10,
+        nonce1=1,
+        nonce2=2,
+        nonce3=3,
+    )
+    record = DecisionRecord(
+        record_id=UUID("00000000-0000-4000-8000-000000000001"),
+        context=context,
+        options=("红 茶\n咖啡", " 茶\t茶 "),
+        algorithm="trial",
+        algorithm_version=1,
+        display_name="裁 判",
+        affirmative_wins=False,
+        operator_count=13,
+    )
+
+    result = render_review(record, replay=None, status="复查不一致。")
+
+    assert "原算法：裁 判（trial v1）" in result
+    assert "原候选：1「红 茶 咖啡」 / 2「茶 茶」" in result
+    assert "原结果：第 2 项「茶 茶」" in result
+
+
+def test_review_uses_custom_record_templates() -> None:
+    from nonebot_plugin_lavi.config import TextConfig
+    from nonebot_plugin_lavi.render import render_review
+
+    text = TextConfig(
+        record_id="ID={record_id}",
+        record_time="时间={timestamp}",
+        record_algorithm="算法={algorithm}",
+        record_options="候选={options}",
+        record_result="结果={result}",
+        record_count="数量={operator_count}",
+    )
+
+    result = render_review(
+        _review_record(),
+        replay=None,
+        status="复查一致。",
+        text=text,
+    )
+
+    assert result == (
+        "ID=00000000-0000-4000-8000-000000000001\n"
+        "时间=2024-05-06T07:08:09+00:00\n"
+        "算法=裁判（trial v1）\n"
+        "候选=1「红茶」 / 2「咖啡」\n"
+        "结果=第 1 项「红茶」\n"
+        "数量=13\n"
+        "复查一致。"
+    )

@@ -12,8 +12,9 @@ src/nonebot_plugin_lavi/
 ├── protocol.py              # 决策上下文、Algorithm/Explanation/Decision、算子计量与位派生
 ├── decision.py              # 参数解析与选择器→算法编排（产出 Decision，无 NoneBot 依赖）
 ├── selector.py              # 算法注册表校验与选择策略
-├── command.py               # /lavi 处理函数（不持有 Matcher）
-├── render.py                # 决策答案的单行文本渲染
+├── command.py               # /lavi 与 /lavi-review 处理函数（不持有 Matcher）
+├── storage.py               # DecisionRecord 的原子滚动持久化
+├── render.py                # 决策答案、详细回复与复查文本渲染
 └── decider_algorithms/
     ├── __init__.py          # 显式算法注册表
     ├── dayan.py             # 大衍筮法算法
@@ -27,12 +28,13 @@ tests/
 ├── test_config.py           # 文案配置默认值与校验
 ├── test_decision.py         # 二元决策核心契约
 ├── test_decider_algorithms.py
-├── test_render.py           # 回答与参数错误渲染
+├── test_render.py           # 回答、详细回复与复查渲染
 ├── test_selector.py
-└── plugin_test.py           # 插件加载与命令交互测试
-```
+├── test_storage.py          # 滚动存储、文件锁、原子替换与损坏恢复
+└── plugin_test.py           # 插件加载、命令交互与跨会话复查
 
-当前状态：参数解析、决策核心、算法选择与 `/lavi` 命令已接通；决策历史与持久化尚未实现。
+当前状态：参数解析、决策核心、算法选择、`/lavi` 命令、滚动历史与 `/lavi-review`
+复查均已接通。历史与持久化契约见下文“决策记录与复查”和“持久化”。
 
 ## 运行时入口
 
@@ -41,12 +43,15 @@ tests/
 - 定义 `__plugin_meta__`（`type="application"`，`config=Config`，`supported_adapters=None`）。
 - `require("nonebot_plugin_localstore")` 后用 `store.get_plugin_data_dir()` 取得 `data_dir`。
 - 读取 `get_plugin_config(Config).lavi` 得到 `plugin_config`；其中 `plugin_config.text`
-  是 `TextConfig` 文案模板，随命令一起传给 `handle_lavi()`。
+  是 `TextConfig` 文案模板，随命令一起传给 `handle_lavi()` / `handle_review()`。
+- 用 `data_dir` 与 `plugin_config.history_limit` 构造一次 `HistoryStore`，供两个命令共用；
+  构造只保存路径与容量，首次读写在 worker 线程中按需访问 `history.json`。
 - 用 `build_selector()` 构建一次算法选择器；配置的算法名无效时记录 WARNING 并回退到
   `random`，保证插件仍可加载。命令层可在单次调用中按参数临时构建选择器，覆盖该默认值。
-- 注册 `/lavi` matcher，并调用 `command.handle_lavi()`；处理函数不持有 `Matcher`，
-  返回的文本已经过渲染层生成。处理函数抛异常时，入口记录日志并回复
-  `LAVI__TEXT__UNAVAILABLE` 配置的降级文案。
+- 注册 `/lavi` 与 `/lavi-review` matcher，并调用 `command.handle_lavi()` /
+  `command.handle_review()`；处理函数不持有 `Matcher`，返回的文本已经过渲染层生成。
+  处理函数抛异常时，入口记录日志并回复 `LAVI__TEXT__UNAVAILABLE` 配置的降级文案。
+  最终 `finish(answer)` 在异常处理范围之外调用。
 
 新增命令与生命周期钩子也注册在这里，处理逻辑放同级子模块，避免把业务继续堆进入口文件。
 
@@ -68,9 +73,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
                              Algorithm.explain(context) ──> Explanation
                                    │
                                    └────── same object ─────┘
-                             result: Decision(answer, algorithm, display_name, operators, steps)
+                             result: Decision(options, affirmative_wins, algorithm,
+                                              version, display_name, operators, steps)
                                         │
-                          render_answer / render_detailed
+                          render_answer / render_detailed / render_review
                                         │
                                    multi-line reply
 ```
@@ -86,8 +92,10 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 - `selector(context)` 选出一个 `Algorithm`。普通模式调用一次 `calculate()`；详细模式在
   算法提供 `explain()` 时只调用一次 `explain()`，从同一次演算中取得答案与步骤，避免
   重复派生。两种路径都在 `count_operators()` 内执行，记录算法实际派生的 64 位算子数，
-  产出 `Decision(answer, algorithm, display_name, operator_count, steps)`。该计数不含
-  选择算法本身使用的算子。
+  产出 `Decision(options, affirmative_wins, algorithm, algorithm_version, display_name,
+  operator_count, steps)`。`options` 按原序保存两个候选，`affirmative_wins` 保存胜方，
+  `answer` 是由两者还原的只读属性，因此相同候选也能区分第 1/2 项。该计数不含选择算法
+  本身使用的算子。
 - `parse_invocation()` 按空白分隔后的字段数分派：1 个字段视为算法名，2 个字段保持两个
   候选的原解析，3 个字段视为“算法名 + 两个候选”，0 个或 4 个及以上保持原逻辑。命令层为
   1 字段中的有效算法名构建固定选择器，未知名称静默沿用配置选择器；3 字段中的未知名称
@@ -109,6 +117,33 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
   再代入。`steps_header` 为空字符串时不输出步骤标题。两种回复都只用纯文本换行与常见
   标点/emoji，不做边框、对齐或字体宽度计算，避免不同适配器的渲染差异。渲染只影响展示，
   不改变 `decision.decide()` 返回的答案与元数据，也不参与随机性。
+
+## 决策记录与复查
+
+`command.handle_lavi()` 在 `decide()` 成功后才签发 `uuid4()` 记录 ID，并把这一次
+`capture_context()` 的完整采样与决策元数据组装成 `DecisionRecord`。记录只保留
+`record_id`、`context`（timestamp/pid/三个 nonce）、`options`、`algorithm`、
+`algorithm_version`、`display_name`、`affirmative_wins` 与 `operator_count`；事件身份、
+聊天原文与可再生的 `steps` 一律不写入。`DecisionRecord` 在持久化边界校验 context 五个
+键齐全且 timestamp 带 UTC 零偏移。
+
+- 保存成功后才回复；简洁与详细回复都在末行追加 `TextConfig.record_id`。写入失败或
+  `history_limit=0` 时仍保留答案与 ID，并分别附加“记录未保存”/“历史记录已关闭”提示；
+  存储错误与算法不可用分开处理，前者不触发 `LAVI__TEXT__UNAVAILABLE`。
+- `HistoryStore.append()` 遇到 ID 冲突抛 `DuplicateRecordId`，命令层只重新签发 ID 并重试
+  保存，不重新演算。其他读写错误统一为 `HistoryUnavailable`。
+- `/lavi-review <记录ID>` 只接受标准 36 字符、带连字符的 UUIDv4（大小写等价），按 ID
+  直接查询，不按用户/群/适配器过滤，也不提供列表。历史关闭、记录缺失、文件不可读分别
+  使用独立文案。
+- 复查由 `decider_algorithms.ALGORITHMS` 按 `(algorithm, algorithm_version)` 精确定位
+  实现；权重只影响新决策。复算调用
+  `decide("", context=record.context, options=record.options, selector=固定实现, trace=True)`，
+  空参数使 `parse_options()` 原样采用历史候选，`trace=True` 让 `explain()` 只调用一次；
+  没有 `explain()` 的算法由 `calculate()` 计算一次。
+- `render_review()` 先展示原记录（ID、UTC ISO 时间、`显示名（name vN）`、按原序的两个
+  候选、含第 1/2 项的原结果、原算子数），存在复算时追加 `render_detailed()` 块，末行
+  给出核对状态。`affirmative_wins` 与 `operator_count` 同时相等为 `复查一致。`，否则
+  `复查不一致。`；版本缺失或复算抛错时省略复算块，分别显示版本不可用/复算失败。
 
 ## 内置算法
 
@@ -183,11 +218,24 @@ capture_context() ──> DecisionContext ──selector──> Algorithm
 覆盖）。读写规则：
 
 - 路径只从入口暴露的 `data_dir` 派生，不用 `Path(__file__).parent` 或 `os.getcwd()`。
-- 文件写入使用同目录临时文件加 `os.replace()` 原子替换，避免留下半截 JSON。
+- 文件写入使用同目录临时文件，`flush`、`os.fsync()` 后以 `os.replace()` 原子替换，避免
+  留下半截 JSON；失败只清理本次临时文件。
 - 时间戳使用时区感知的 UTC datetime。
 - JSON 形状一旦发布即视为对外契约，字段变更需保持向后兼容或提供迁移路径。
 
+决策历史文件为 `data_dir/history.json`，形状固定为
+`{"schema_version": 1, "records": [...]}`，`records` 从旧到新排列，保留最近
+`LAVI__HISTORY_LIMIT` 条（全部会话共享）。同一目录的所有读写都在
+`history.json.lock` 的跨进程文件锁内完成，阻塞部分整体放入 `asyncio.to_thread()`；
+每次取得锁后重新加载最新快照，因此多个进程同时追加不会丢记录。读取只查看末尾
+`limit` 条且不重写文件；追加成功时才把磁盘内容裁剪到新窗口。
+
+缺少文件视为空历史。空文件、损坏 JSON、未知 `schema_version`、记录校验失败、文件内
+重复 ID、锁超时与文件系统错误统一抛 `HistoryUnavailable` 并保留原件，绝不把损坏文件
+当空库覆盖。`limit=0` 时存储层拒绝追加并让查询返回空，命令层提前短路，避免 `[-0:]`
+被当作无限窗口。
+
 ## 待定
 
-持久化数据模型、决策历史与适配器支持面在功能设计确定后补充到本文与各级 `AGENTS.md`；
-`protocol.py`/`decision.py`/`selector.py` 的公开契约以源码与对应测试为准。
+适配器支持面与后续持久化字段扩展在功能设计确定后补充到本文与各级 `AGENTS.md`；
+`protocol.py`/`decision.py`/`selector.py`/`storage.py` 的公开契约以源码与对应测试为准。
