@@ -31,9 +31,13 @@ prek run --all-files
 - `fake.py`：构造 OneBot V11 群聊/私聊假事件，供 `nonebug` 的 `app.test_matcher` 使用。
 - `test_command.py`：`handle_lavi()` 的字段数分派——1 字段算法名与未知名称静默回退、
   2 字段保持两个候选、3 字段算法名加候选与未知名称中止、4 个及以上字段保持原行为，
-  命令参数对默认选择器的覆盖，以及自定义文案与肯定/否定词的渲染。
+  命令参数对默认选择器的覆盖，以及自定义文案与肯定/否定词的渲染；记录 ID 行、详细
+  回复末行、`history_limit=0` 与写入失败提示、ID 冲突重签且不重算；`handle_review()`
+  的 UUIDv4 格式校验、停止历史、记录缺失、损坏文件、大小写等价、原记录/复算/核对
+  状态、版本缺失、复算异常、历史文案变更后的候选还原与滚动淘汰。
 - `test_config.py`：`TextConfig` 的嵌套构造、`LAVI__TEXT__...` 环境变量解析、必填占位符、
-  非法占位符/花括号、空白纯文本字段，以及允许空步骤标题。
+  非法占位符/花括号、空白纯文本字段、允许空步骤标题，以及 `LAVI__HISTORY_LIMIT` 的
+  默认值、环境变量解析与负数拒绝。
 - `test_decision.py`：二元决策核心契约——`parse_invocation()` 的字段数分派与
   `parse_options()` 的两种模式、选择器/算法共享同一
   `DecisionContext` 且各调用一次、`Decision` 的稳定算法名与显示名、算法算子数（不含
@@ -48,15 +52,23 @@ prek run --all-files
 - `test_selector.py`：固定/随机选择、零权重禁用、`omega` 位映射与 `lambda % N` 规则、
   `available_algorithms()` 的过滤与排序、未知/重名算法拒绝、种子域分离。
 - `test_render.py`：简洁模式的仪式名、结果行、详细模式的空行分隔、算子数量与演算步骤，
-  未知算法时的可用算法列表，以及 `TextConfig` 自定义模板、空步骤标题与转义花括号；
-  不依赖字体宽度或边框。
-- `plugin_test.py`：插件加载与元数据冒烟测试，以及 `/lavi` 的 nonebug 命令交互测试
-  （单字段算法覆盖、三字段未知算法中止、详细模式输出、自定义文案/肯定词与异常降级文案）。
+  未知算法时的可用算法列表，复查的原记录块、可选复算块、核对状态与动态值折叠，以及
+  `TextConfig` 自定义模板、空步骤标题与转义花括号；不依赖字体宽度或边框。
+- `test_storage.py`：记录字段与 JSON 形状往返、UTC 微秒与 64 位整数精度、滚动窗口与
+  调小上限后的只读窗口、ID 冲突、损坏/空/未知版本/重复 ID 文件保留、`limit=0` 暂停、
+  多 store 并发追加、`os.replace` 失败后的原件与临时文件清理，以及 context 完整性校验。
+- `plugin_test.py`：插件加载与元数据冒烟测试、`/lavi` 的 nonebug 命令交互测试
+  （单字段算法覆盖、三字段未知算法中止、详细模式输出、自定义文案/肯定词与异常降级
+  文案），以及固定采样下的决策 → 重启 store → 另一用户跨群复查、历史文件字节不变与
+  同一采样重复决策签发不同 ID。
 
 `test_decision.py` 直接调用 `decision.py`/`protocol.py`，不经过 NoneBot matcher。
-`test_command.py` 直接调用 `command.handle_lavi()`。命令级测试通过 monkeypatch 替换
-插件入口的 `algorithm_selector` 或 `command.capture_context`，使回复可精确断言，同时保留
-真实的命令解析与 `finish()` 路径。
+`test_command.py` 直接 `await command.handle_lavi()` / `command.handle_review()`，为每个
+测试构造 `tmp_path` 下的 `HistoryStore`，并用固定的 `command.uuid4` 控制记录 ID。
+命令级测试通过 monkeypatch 替换插件入口的 `algorithm_selector`、`plugin.history_store`、
+`command.capture_context` 或 `command.uuid4`，使回复可精确断言，同时保留真实的命令解析、
+持久化与 `finish()` 路径。复查测试把 `capture_context`、默认选择器与 `uuid4` 替换为
+直接失败的函数，以证明复查不重新采样、不重选算法、不签发新 ID。
 
 新增功能时按 `<subsystem>` 新建 `test_<subsystem>.py`，命令级交互测试留在 `plugin_test.py`。
 算法测试使用固定 `DecisionContext` 做确定性断言，不写依赖概率分布的统计测试。

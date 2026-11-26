@@ -4,16 +4,23 @@ import os
 import hashlib
 import secrets
 from typing import TypeAlias
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from collections.abc import Callable, Iterator
 
-from pydantic import Field, BaseModel
+from pydantic import UUID4, Field, BaseModel
+
+try:
+    from pydantic import field_validator as _field_validator
+except ImportError:  # pragma: no cover - pydantic v1 compatibility
+    from pydantic import validator as _field_validator
 
 OPERATOR_COUNT = 13
 OPERATOR_BITS = 64
+
+_CONTEXT_KEYS = frozenset({"timestamp", "pid", "nonce1", "nonce2", "nonce3"})
 
 
 class DecisionContext(BaseModel):
@@ -30,6 +37,38 @@ class DecisionContext(BaseModel):
     nonce1: int = Field(default=0, ge=0, lt=1 << 64)
     nonce2: int = Field(default=0, ge=0, lt=1 << 64)
     nonce3: int = Field(default=0, ge=0, lt=1 << 64)
+
+
+class DecisionRecord(BaseModel):
+    """One completed decision as persisted for later review.
+
+    ``context`` must be a complete sampling: all five keys are required and
+    its timestamp must be UTC, otherwise a replay would silently derive a
+    different result. Event identity, chat text and regenerable steps are
+    deliberately excluded.
+    """
+
+    record_id: UUID4
+    context: DecisionContext
+    options: tuple[str, str]
+    algorithm: str
+    algorithm_version: int = Field(ge=1)
+    display_name: str
+    affirmative_wins: bool
+    operator_count: int = Field(ge=0)
+
+    @_field_validator("context")
+    @classmethod
+    def _check_context(cls, value: DecisionContext) -> DecisionContext:
+        fields_set = getattr(value, "model_fields_set", None)
+        if fields_set is None:
+            fields_set = value.__fields_set__
+        missing = _CONTEXT_KEYS - set(fields_set)
+        if missing:
+            raise ValueError(f"context is missing {sorted(missing)}")
+        if value.timestamp.utcoffset() != timedelta(0):
+            raise ValueError("context timestamp must be timezone-aware UTC")
+        return value
 
 
 Calculator: TypeAlias = Callable[[DecisionContext], bool]
@@ -89,13 +128,25 @@ Selector: TypeAlias = Callable[[DecisionContext], Algorithm]
 
 @dataclass(frozen=True, slots=True)
 class Decision:
-    """The answer together with the algorithm and operator count behind it."""
+    """The answer together with the algorithm and operator count behind it.
 
-    answer: str
+    ``options`` keeps the candidates in display order and ``affirmative_wins``
+    records which one the algorithm selected, so two identical candidates stay
+    distinguishable. ``answer`` is the winning text itself.
+    """
+
+    options: tuple[str, str]
+    affirmative_wins: bool
     algorithm: str
+    algorithm_version: int
     display_name: str
     operator_count: int
     steps: tuple[str, ...] = ()
+
+    @property
+    def answer(self) -> str:
+        """Return the winning option text."""
+        return self.options[0] if self.affirmative_wins else self.options[1]
 
 
 @dataclass(slots=True)

@@ -86,8 +86,10 @@ def decide(
             affirmative_wins = algorithm.calculate(context)
             steps = ()
     return Decision(
-        answer=affirmative if affirmative_wins else negative,
+        options=(affirmative, negative),
+        affirmative_wins=affirmative_wins,
         algorithm=algorithm.name,
+        algorithm_version=algorithm.version,
         display_name=algorithm.label,
         operator_count=tally.count,
         steps=steps,
