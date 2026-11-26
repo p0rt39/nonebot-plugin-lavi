@@ -4,14 +4,13 @@ import json
 import asyncio
 from uuid import UUID
 from typing import TYPE_CHECKING, Any
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
 import pytest
 from pydantic import ValidationError
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from nonebot_plugin_lavi.protocol import DecisionRecord, DecisionContext
 
 _TIMESTAMP = datetime(2024, 5, 6, 7, 8, 9, 123456, tzinfo=timezone.utc)
